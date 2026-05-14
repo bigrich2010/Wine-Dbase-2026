@@ -14,9 +14,14 @@ export default function WineForm({ initial = {}, onSave, onCancel, previewImg })
     alcohol: initial.alcohol || '',
     drink_from: initial.drink_from || '',
     drink_to: initial.drink_to || '',
+    score_winefront: initial.score_winefront || '',
+    score_ray_jordan: initial.score_ray_jordan || '',
     score_halliday: initial.score_halliday || '',
     score_wine_advocate: initial.score_wine_advocate || '',
     score_other: initial.score_other || '',
+    url_winefront: initial.url_winefront || '',
+    url_ray_jordan: initial.url_ray_jordan || '',
+    url_other: initial.url_other || '',
     critic_notes: initial.critic_notes || '',
   })
 
@@ -61,11 +66,26 @@ export default function WineForm({ initial = {}, onSave, onCancel, previewImg })
       </div>
 
       <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', paddingBottom: 4, borderBottom: '1px solid var(--border)', marginTop: 4 }}>Scores</div>
+      <div className="form-row">
+        <div className="form-field"><label>Winefront</label><input value={f.score_winefront} onChange={e => s('score_winefront', e.target.value)} placeholder="95+" /></div>
+        <div className="form-field"><label>Ray Jordan</label><input value={f.score_ray_jordan} onChange={e => s('score_ray_jordan', e.target.value)} placeholder="96" /></div>
+      </div>
       <div className="form-row triple">
         <div className="form-field"><label>Halliday</label><input value={f.score_halliday} onChange={e => s('score_halliday', e.target.value)} placeholder="95" /></div>
         <div className="form-field"><label>Wine Advocate</label><input value={f.score_wine_advocate} onChange={e => s('score_wine_advocate', e.target.value)} placeholder="97" /></div>
         <div className="form-field"><label>Other</label><input value={f.score_other} onChange={e => s('score_other', e.target.value)} placeholder="96" /></div>
       </div>
+
+      <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', paddingBottom: 4, borderBottom: '1px solid var(--border)', marginTop: 4 }}>Review links</div>
+      <div className="form-row">
+        <div className="form-field"><label>Winefront URL</label><input value={f.url_winefront} onChange={e => s('url_winefront', e.target.value)} placeholder="https://winefront.com.au/…" /></div>
+        <div className="form-field"><label>Ray Jordan URL</label><input value={f.url_ray_jordan} onChange={e => s('url_ray_jordan', e.target.value)} placeholder="https://rayjordan.com.au/…" /></div>
+      </div>
+      <div className="form-row full">
+        <div className="form-field"><label>Other review URL</label><input value={f.url_other} onChange={e => s('url_other', e.target.value)} placeholder="https://…" /></div>
+      </div>
+
+      <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', paddingBottom: 4, borderBottom: '1px solid var(--border)', marginTop: 4 }}>Notes</div>
       <div className="form-row full">
         <div className="form-field"><label>Critic notes</label><textarea value={f.critic_notes} onChange={e => s('critic_notes', e.target.value)} placeholder="Published reviews and tasting notes…" /></div>
       </div>
