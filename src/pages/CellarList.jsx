@@ -9,6 +9,7 @@ import WineForm from '../components/WineForm'
 import BottleForm from '../components/BottleForm'
 import ScoreImport from '../components/ScoreImport'
 import AskCellar from './AskCellar'
+import Analytics from './Analytics'
 
 export default function CellarList() {
   const [wines, setWines] = useState([])
@@ -178,14 +179,14 @@ export default function CellarList() {
         </div>
 
         <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {['cellar', 'ask'].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: '10px 16px', fontSize: 13, fontWeight: tab === t ? 500 : 400,
+          {[['cellar','Cellar'],['analytics','Analytics'],['ask','Ask']].map(([key, label]) => (
+            <button key={key} onClick={() => setTab(key)} style={{
+              padding: '10px 14px', fontSize: 13, fontWeight: tab === key ? 500 : 400,
               background: 'none', border: 'none', cursor: 'pointer',
-              color: tab === t ? 'var(--ink)' : 'var(--ink-light)',
-              borderBottom: `2px solid ${tab === t ? 'var(--wine)' : 'transparent'}`,
+              color: tab === key ? 'var(--ink)' : 'var(--ink-light)',
+              borderBottom: `2px solid ${tab === key ? 'var(--wine)' : 'transparent'}`,
               marginBottom: -1, transition: 'color 0.15s',
-            }}>{t === 'cellar' ? 'Cellar' : 'Ask my cellar'}</button>
+            }}>{label}</button>
           ))}
         </div>
       </header>
@@ -235,6 +236,7 @@ export default function CellarList() {
       )}
 
       {tab === 'ask' && <div style={{ padding: '12px 16px 0' }}><AskCellar wines={wines} bottles={bottles} /></div>}
+      {tab === 'analytics' && <div style={{ padding: '12px 16px 0' }}><Analytics wines={wines} bottles={bottles} /></div>}
 
       {modal === 'scan' && (
         <Modal title="Scan wine label" onClose={() => setModal(null)}>
