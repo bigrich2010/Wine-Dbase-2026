@@ -28,9 +28,14 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
       country: form.country, grape: form.grape, alcohol: form.alcohol,
       drink_from: form.drink_from ? parseInt(form.drink_from) : null,
       drink_to: form.drink_to ? parseInt(form.drink_to) : null,
+      score_winefront: form.score_winefront || null,
+      score_ray_jordan: form.score_ray_jordan || null,
       score_halliday: form.score_halliday || null,
       score_wine_advocate: form.score_wine_advocate || null,
       score_other: form.score_other || null,
+      url_winefront: form.url_winefront || null,
+      url_ray_jordan: form.url_ray_jordan || null,
+      url_other: form.url_other || null,
       critic_notes: form.critic_notes || null,
     }).eq('id', wine.id)
     setSaving(false)
@@ -76,14 +81,21 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
   }
 
   const scores = [
-    wine.score_winefront && { label: 'Winefront', val: wine.score_winefront },
-    wine.score_ray_jordan && { label: 'Ray Jordan', val: wine.score_ray_jordan },
+    wine.score_winefront && { label: 'Winefront', val: wine.score_winefront, url: wine.url_winefront },
+    wine.score_ray_jordan && { label: 'Ray Jordan', val: wine.score_ray_jordan, url: wine.url_ray_jordan },
     wine.score_halliday && { label: 'Halliday', val: wine.score_halliday },
     wine.score_wine_advocate && { label: 'Wine Advocate', val: wine.score_wine_advocate },
-    wine.score_other && { label: 'Score', val: wine.score_other },
+    wine.score_other && { label: 'Score', val: wine.score_other, url: wine.url_other },
   ].filter(Boolean)
 
-  const totalSpend = bottles.reduce((s, b) => s + (b.purchase_price || 0), 0)
+  const totalSpend = bottles.reduce((s, b) => s + (parseFloat(b.purchase_price) || 0), 0)
+
+  const searchUrl = (site) => {
+    const q = encodeURIComponent(`${wine.producer} ${wine.wine_name || ''} ${wine.vintage || ''}`.trim())
+    if (site === 'winefront') return `https://winefront.com.au/?s=${q}`
+    if (site === 'rayjordan') return `https://rayjordan.com.au/?s=${q}`
+    return null
+  }
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 16px 60px' }}>
@@ -95,6 +107,7 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
             {wine.vintage && <span style={{ fontSize: 13, color: 'var(--ink-mid)' }}>{wine.vintage}</span>}
             <span className={`badge badge-${wine.type}`}>{wine.type}</span>
             {wine.region && <span style={{ fontSize: 12, color: 'var(--ink-light)' }}>{wine.region}{wine.appellation ? ` · ${wine.appellation}` : ''}</span>}
+            {wine.grape && <span style={{ fontSize: 12, color: 'var(--ink-light)' }}>{wine.grape}</span>}
           </div>
         </div>
         <button className="btn btn-secondary btn-sm" onClick={() => setModal('editWine')}>Edit</button>
@@ -103,7 +116,7 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px,1fr))', gap: 8, marginBottom: 20 }}>
         {[
           { l: 'In cellar', v: bottles.filter(b => b.status === 'In cellar').length },
-          { l: 'Consumed', v: bottles.filter(b => b.status === 'Consumed').length },
+          { l: 'Consumed', v: bottles.filter(b => ['Consumed','Enjoyed at restaurant'].includes(b.status)).length },
           { l: 'Pending', v: bottles.filter(b => b.status === 'Pending arrival').length },
           { l: 'Total spend', v: totalSpend > 0 ? formatPrice(totalSpend) : '—' },
         ].map(s => (
@@ -117,8 +130,8 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
       {(wine.drink_from || wine.drink_to || scores.length > 0) && (
         <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
           {(wine.drink_from || wine.drink_to) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: scores.length ? 12 : 0 }}>
-              <span style={{ fontSize: 12, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drink</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: scores.length ? 14 : 0 }}>
+              <span style={{ fontSize: 11, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drink</span>
               <span style={{ fontSize: 15, fontWeight: 500 }}>{wine.drink_from || '?'} — {wine.drink_to || '?'}</span>
               {ds === 'ready' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>In window</span>}
               {ds === 'early' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--amber-pale)', color: 'var(--amber)' }}>Too early · {wine.drink_from - year}yr to go</span>}
@@ -126,17 +139,34 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
             </div>
           )}
           {scores.length > 0 && (
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               {scores.map(sc => (
                 <div key={sc.label}>
-                  <div style={{ fontSize: 10, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sc.label}</div>
-                  <div style={{ fontSize: 18, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>{sc.val}</div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{sc.label}</div>
+                  <div style={{ fontSize: 20, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>{sc.val}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
       )}
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        <a href={wine.url_winefront || searchUrl('winefront')} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 12, fontWeight: 500, background: '#fff', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', color: 'var(--ink-mid)', textDecoration: 'none', cursor: 'pointer' }}>
+          🍷 Winefront {wine.url_winefront ? '↗' : '⟳'}
+        </a>
+        <a href={wine.url_ray_jordan || searchUrl('rayjordan')} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 12, fontWeight: 500, background: '#fff', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', color: 'var(--ink-mid)', textDecoration: 'none', cursor: 'pointer' }}>
+          🍷 Ray Jordan {wine.url_ray_jordan ? '↗' : '⟳'}
+        </a>
+        {wine.url_other && (
+          <a href={wine.url_other} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 12, fontWeight: 500, background: '#fff', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)', color: 'var(--ink-mid)', textDecoration: 'none' }}>
+            Review ↗
+          </a>
+        )}
+      </div>
 
       {wine.critic_notes && (
         <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: 'var(--ink-mid)', lineHeight: 1.6, fontStyle: 'italic' }}>
@@ -185,14 +215,14 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
       </div>
 
       {modal === 'editWine' && (
-        <Modal title="Edit wine" onClose={() => setModal(null)}>
-          {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" /></div> : <WineForm initial={wine} onSave={saveWine} onCancel={() => setModal(null)} />}
+        <Modal title="Edit wine" onClose={() => setModal(null)} wide>
+          {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /></div> : <WineForm initial={wine} onSave={saveWine} onCancel={() => setModal(null)} />}
         </Modal>
       )}
 
       {modal === 'addBottle' && (
         <Modal title={editBottle ? 'Edit bottle' : 'Add bottle'} onClose={() => { setModal(null); setEditBottle(null) }}>
-          {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" /></div> : <BottleForm initial={editBottle || {}} onSave={saveBottle} onCancel={() => { setModal(null); setEditBottle(null) }} />}
+          {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /></div> : <BottleForm initial={editBottle || {}} onSave={saveBottle} onCancel={() => { setModal(null); setEditBottle(null) }} />}
         </Modal>
       )}
     </div>
