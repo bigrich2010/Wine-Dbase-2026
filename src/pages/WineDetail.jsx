@@ -5,11 +5,13 @@ import { drinkingStatus, formatPrice, BOTTLE_STATUSES } from '../lib/helpers'
 import Modal from '../components/Modal'
 import WineForm from '../components/WineForm'
 import BottleForm from '../components/BottleForm'
+import DrinkBottleForm from '../components/DrinkBottleForm'
 
 export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
   const [modal, setModal] = useState(null)
   const [editBottle, setEditBottle] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [drinkBottle, setDrinkBottle] = useState(null)
 
   const ds = drinkingStatus(wine)
   const year = new Date().getFullYear()
@@ -66,6 +68,39 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
     setSaving(false)
     setModal(null)
     setEditBottle(null)
+    onRefresh()
+  }
+
+  const quickRemoveBottle = async () => {
+    setSaving(true)
+    await supabase.from('bottles').update({
+      status: 'Consumed',
+      consumed_date: new Date().toISOString().split('T')[0],
+    }).eq('id', drinkBottle.id)
+    setSaving(false)
+    setModal(null)
+    setDrinkBottle(null)
+    onRefresh()
+  }
+
+  const consumeBottle = async (form) => {
+    setSaving(true)
+    await supabase.from('bottles').update({
+      status: form.where_type === 'Restaurant' ? 'Enjoyed at restaurant' : 'Consumed',
+      consumed_date: form.consumed_date || null,
+      restaurant_name: form.restaurant_name || null,
+      shared_with: form.shared_with || null,
+      rating: form.rating || null,
+      tasting_note: form.tasting_note || null,
+      decanted: form.decanted || false,
+      decanted_mins: form.decanted_mins ? parseInt(form.decanted_mins) : null,
+      where_type: form.where_type || null,
+      reorder: form.reorder || false,
+      drunk_hero: true,
+    }).eq('id', drinkBottle.id)
+    setSaving(false)
+    setModal(null)
+    setDrinkBottle(null)
     onRefresh()
   }
 
@@ -201,7 +236,10 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
                   {b.restaurant_name && <div style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 2 }}>@ {b.restaurant_name}{b.consumed_date ? ` · ${new Date(b.consumed_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</div>}
                   {b.tasting_note && <div style={{ fontSize: 12, color: 'var(--ink-mid)', marginTop: 6, fontStyle: 'italic', lineHeight: 1.55, padding: '6px 10px', background: 'var(--cream-dark)', borderRadius: 6 }}>{b.tasting_note}</div>}
                 </div>
-                <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  {b.status === 'In cellar' && (
+                    <button onClick={() => { setDrinkBottle(b); setModal('drinkBottle') }} style={{ background: 'var(--wine)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 11, padding: '4px 8px', borderRadius: 4, fontWeight: 500, fontFamily: 'DM Sans, sans-serif' }}>Drink</button>
+                  )}
                   <button onClick={() => { setEditBottle(b); setModal('addBottle') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-light)', fontSize: 14, padding: '4px 6px', borderRadius: 4 }} onMouseEnter={e => e.target.style.background='var(--cream-dark)'} onMouseLeave={e => e.target.style.background='none'}>✎</button>
                   <button onClick={() => deleteBottle(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A32D2D', fontSize: 13, padding: '4px 6px', borderRadius: 4 }} onMouseEnter={e => e.target.style.background='#FCE8E8'} onMouseLeave={e => e.target.style.background='none'}>✕</button>
                 </div>
@@ -241,6 +279,14 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
       {modal === 'addBottle' && (
         <Modal title={editBottle ? 'Edit bottle' : 'Add bottle'} onClose={() => { setModal(null); setEditBottle(null) }}>
           {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /></div> : <BottleForm initial={editBottle || {}} onSave={saveBottle} onCancel={() => { setModal(null); setEditBottle(null) }} />}
+        </Modal>
+      )}
+      {modal === 'drinkBottle' && drinkBottle && (
+        <Modal title="Drink a bottle" onClose={() => { setModal(null); setDrinkBottle(null) }}>
+          {saving
+            ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
+            : <DrinkBottleForm wine={wine} bottle={drinkBottle} onQuickRemove={quickRemoveBottle} onSave={consumeBottle} onCancel={() => { setModal(null); setDrinkBottle(null) }} />
+          }
         </Modal>
       )}
     </div>
