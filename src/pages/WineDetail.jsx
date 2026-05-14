@@ -1,0 +1,200 @@
+import { useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { drinkingStatus, formatPrice, BOTTLE_STATUSES } from '../lib/helpers'
+import Modal from '../components/Modal'
+import WineForm from '../components/WineForm'
+import BottleForm from '../components/BottleForm'
+
+export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
+  const [modal, setModal] = useState(null)
+  const [editBottle, setEditBottle] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const ds = drinkingStatus(wine)
+  const year = new Date().getFullYear()
+
+  const grouped = BOTTLE_STATUSES.reduce((acc, s) => {
+    const list = bottles.filter(b => b.status === s)
+    if (list.length) acc[s] = list
+    return acc
+  }, {})
+
+  const saveWine = async (form) => {
+    setSaving(true)
+    await supabase.from('wines').update({
+      producer: form.producer, wine_name: form.wine_name,
+      vintage: form.vintage ? parseInt(form.vintage) : null,
+      type: form.type, region: form.region, appellation: form.appellation,
+      country: form.country, grape: form.grape, alcohol: form.alcohol,
+      drink_from: form.drink_from ? parseInt(form.drink_from) : null,
+      drink_to: form.drink_to ? parseInt(form.drink_to) : null,
+      score_halliday: form.score_halliday || null,
+      score_wine_advocate: form.score_wine_advocate || null,
+      score_other: form.score_other || null,
+      critic_notes: form.critic_notes || null,
+    }).eq('id', wine.id)
+    setSaving(false)
+    setModal(null)
+    onRefresh()
+  }
+
+  const saveBottle = async (form) => {
+    setSaving(true)
+    const payload = {
+      wine_id: wine.id,
+      status: form.status,
+      quantity: parseInt(form.quantity) || 1,
+      purchase_date: form.purchase_date || null,
+      purchase_price: form.purchase_price ? parseFloat(form.purchase_price) : null,
+      purchase_source: form.purchase_source || null,
+      auction_lot: form.auction_lot || null,
+      consumed_date: form.consumed_date || null,
+      restaurant_name: form.restaurant_name || null,
+      tasting_note: form.tasting_note || null,
+    }
+    if (editBottle) {
+      await supabase.from('bottles').update(payload).eq('id', editBottle.id)
+    } else {
+      await supabase.from('bottles').insert([payload])
+    }
+    setSaving(false)
+    setModal(null)
+    setEditBottle(null)
+    onRefresh()
+  }
+
+  const deleteBottle = async (id) => {
+    if (!confirm('Delete this bottle record?')) return
+    await supabase.from('bottles').delete().eq('id', id)
+    onRefresh()
+  }
+
+  const deleteWine = async () => {
+    if (!confirm(`Delete ${wine.producer}${wine.wine_name ? ' ' + wine.wine_name : ''}${wine.vintage ? ' ' + wine.vintage : ''} and all its bottle records? This cannot be undone.`)) return
+    await supabase.from('wines').delete().eq('id', wine.id)
+    onBack()
+  }
+
+  const scores = [
+    wine.score_winefront && { label: 'Winefront', val: wine.score_winefront },
+    wine.score_ray_jordan && { label: 'Ray Jordan', val: wine.score_ray_jordan },
+    wine.score_halliday && { label: 'Halliday', val: wine.score_halliday },
+    wine.score_wine_advocate && { label: 'Wine Advocate', val: wine.score_wine_advocate },
+    wine.score_other && { label: 'Score', val: wine.score_other },
+  ].filter(Boolean)
+
+  const totalSpend = bottles.reduce((s, b) => s + (b.purchase_price || 0), 0)
+
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 16px 60px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 0 20px', borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-light)', fontSize: 20, padding: '0 4px', lineHeight: 1 }}>‹</button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ fontSize: 26, lineHeight: 1.2 }}>{wine.producer}{wine.wine_name ? ` — ${wine.wine_name}` : ''}</h2>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4, alignItems: 'center' }}>
+            {wine.vintage && <span style={{ fontSize: 13, color: 'var(--ink-mid)' }}>{wine.vintage}</span>}
+            <span className={`badge badge-${wine.type}`}>{wine.type}</span>
+            {wine.region && <span style={{ fontSize: 12, color: 'var(--ink-light)' }}>{wine.region}{wine.appellation ? ` · ${wine.appellation}` : ''}</span>}
+          </div>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={() => setModal('editWine')}>Edit</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px,1fr))', gap: 8, marginBottom: 20 }}>
+        {[
+          { l: 'In cellar', v: bottles.filter(b => b.status === 'In cellar').length },
+          { l: 'Consumed', v: bottles.filter(b => b.status === 'Consumed').length },
+          { l: 'Pending', v: bottles.filter(b => b.status === 'Pending arrival').length },
+          { l: 'Total spend', v: totalSpend > 0 ? formatPrice(totalSpend) : '—' },
+        ].map(s => (
+          <div key={s.l} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', marginBottom: 3 }}>{s.l}</div>
+            <div style={{ fontSize: 20, fontFamily: 'Cormorant Garamond, serif' }}>{s.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {(wine.drink_from || wine.drink_to || scores.length > 0) && (
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+          {(wine.drink_from || wine.drink_to) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: scores.length ? 12 : 0 }}>
+              <span style={{ fontSize: 12, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drink</span>
+              <span style={{ fontSize: 15, fontWeight: 500 }}>{wine.drink_from || '?'} — {wine.drink_to || '?'}</span>
+              {ds === 'ready' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>In window</span>}
+              {ds === 'early' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--amber-pale)', color: 'var(--amber)' }}>Too early · {wine.drink_from - year}yr to go</span>}
+              {ds === 'past' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#FCE8E8', color: '#8B1A1A' }}>Past peak</span>}
+            </div>
+          )}
+          {scores.length > 0 && (
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {scores.map(sc => (
+                <div key={sc.label}>
+                  <div style={{ fontSize: 10, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sc.label}</div>
+                  <div style={{ fontSize: 18, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>{sc.val}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {wine.critic_notes && (
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: 'var(--ink-mid)', lineHeight: 1.6, fontStyle: 'italic' }}>
+          {wine.critic_notes}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <h3 style={{ fontSize: 18 }}>Bottles</h3>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditBottle(null); setModal('addBottle') }}>+ Add bottle</button>
+      </div>
+
+      {bottles.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--ink-light)', border: '1px dashed var(--border-mid)', borderRadius: 8, fontSize: 13 }}>
+          No bottles yet — add one above
+        </div>
+      ) : (
+        Object.entries(grouped).map(([status, bots]) => (
+          <div key={status} style={{ marginBottom: 16 }}>
+            <div className="section-header">{status} ({bots.length})</div>
+            {bots.map(b => (
+              <div key={b.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--border)', alignItems: 'start' }}>
+                <div>
+                  <div style={{ fontSize: 13, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {b.purchase_date && <span style={{ color: 'var(--ink-mid)' }}>{new Date(b.purchase_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+                    {b.purchase_source && <span style={{ color: 'var(--ink-light)' }}>{b.purchase_source}</span>}
+                    {b.purchase_price && <span style={{ color: 'var(--ink-mid)', fontWeight: 500 }}>{formatPrice(b.purchase_price)}</span>}
+                    {b.auction_lot && <span style={{ fontSize: 11, color: 'var(--ink-light)' }}>Lot {b.auction_lot}</span>}
+                    {b.quantity > 1 && <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 20, background: 'var(--cream-dark)', color: 'var(--ink-light)' }}>×{b.quantity}</span>}
+                  </div>
+                  {b.restaurant_name && <div style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 2 }}>@ {b.restaurant_name}{b.consumed_date ? ` · ${new Date(b.consumed_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</div>}
+                  {b.tasting_note && <div style={{ fontSize: 12, color: 'var(--ink-mid)', marginTop: 6, fontStyle: 'italic', lineHeight: 1.55, padding: '6px 10px', background: 'var(--cream-dark)', borderRadius: 6 }}>{b.tasting_note}</div>}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => { setEditBottle(b); setModal('addBottle') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-light)', fontSize: 14, padding: '4px 6px', borderRadius: 4 }} onMouseEnter={e => e.target.style.background='var(--cream-dark)'} onMouseLeave={e => e.target.style.background='none'}>✎</button>
+                  <button onClick={() => deleteBottle(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A32D2D', fontSize: 13, padding: '4px 6px', borderRadius: 4 }} onMouseEnter={e => e.target.style.background='#FCE8E8'} onMouseLeave={e => e.target.style.background='none'}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))
+      )}
+
+      <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+        <button onClick={deleteWine} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--ink-light)', textDecoration: 'underline' }}>Delete this wine</button>
+      </div>
+
+      {modal === 'editWine' && (
+        <Modal title="Edit wine" onClose={() => setModal(null)}>
+          {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" /></div> : <WineForm initial={wine} onSave={saveWine} onCancel={() => setModal(null)} />}
+        </Modal>
+      )}
+
+      {modal === 'addBottle' && (
+        <Modal title={editBottle ? 'Edit bottle' : 'Add bottle'} onClose={() => { setModal(null); setEditBottle(null) }}>
+          {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" /></div> : <BottleForm initial={editBottle || {}} onSave={saveBottle} onCancel={() => { setModal(null); setEditBottle(null) }} />}
+        </Modal>
+      )}
+    </div>
+  )
+}
