@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import Scanner from '../components/Scanner'
 import WineForm from '../components/WineForm'
 import BottleForm from '../components/BottleForm'
+import ScoreImport from '../components/ScoreImport'
 import AskCellar from './AskCellar'
 
 export default function CellarList() {
@@ -54,9 +55,12 @@ export default function CellarList() {
 
   const totalInCellar = bottles.filter(b => b.status === 'In cellar').length
   const totalPending = bottles.filter(b => b.status === 'Pending arrival').length
-  const totalConsumed = bottles.filter(b => b.status === 'Consumed').length
+  const totalConsumed = bottles.filter(b => ['Consumed', 'Enjoyed at restaurant'].includes(b.status)).length
   const year = new Date().getFullYear()
-  const readyNow = wines.filter(w => w.drink_from && w.drink_to && year >= w.drink_from && year <= w.drink_to && bottlesForWine(w.id).some(b => b.status === 'In cellar')).length
+  const readyNow = wines.filter(w =>
+    w.drink_from && w.drink_to && year >= w.drink_from && year <= w.drink_to &&
+    bottlesForWine(w.id).some(b => b.status === 'In cellar')
+  ).length
 
   const handleScanned = (data) => {
     setScannedData(data || {})
@@ -72,9 +76,14 @@ export default function CellarList() {
       country: form.country || null, grape: form.grape || null, alcohol: form.alcohol || null,
       drink_from: form.drink_from ? parseInt(form.drink_from) : null,
       drink_to: form.drink_to ? parseInt(form.drink_to) : null,
+      score_winefront: form.score_winefront || null,
+      score_ray_jordan: form.score_ray_jordan || null,
       score_halliday: form.score_halliday || null,
       score_wine_advocate: form.score_wine_advocate || null,
       score_other: form.score_other || null,
+      url_winefront: form.url_winefront || null,
+      url_ray_jordan: form.url_ray_jordan || null,
+      url_other: form.url_other || null,
       critic_notes: form.critic_notes || null,
     }]).select().single()
     setSaving(false)
@@ -107,6 +116,35 @@ export default function CellarList() {
     fetchAll()
   }
 
+  const applyScoreImport = async ({ toUpdate, toCreate }) => {
+    setSaving(true)
+    for (const u of toUpdate) {
+      const patch = {}
+      if (u.extracted.score) patch.score_winefront = u.extracted.score
+      if (u.extracted.drink_from) patch.drink_from = u.extracted.drink_from
+      if (u.extracted.drink_to) patch.drink_to = u.extracted.drink_to
+      if (Object.keys(patch).length) {
+        await supabase.from('wines').update(patch).eq('id', u.match.id)
+      }
+    }
+    for (const c of toCreate) {
+      const e = c.extracted
+      await supabase.from('wines').insert([{
+        producer: e.producer,
+        wine_name: e.wine_name || null,
+        vintage: e.vintage ? parseInt(e.vintage) : null,
+        type: e.type || 'Red',
+        region: e.region || null,
+        score_winefront: e.score || null,
+        drink_from: e.drink_from ? parseInt(e.drink_from) : null,
+        drink_to: e.drink_to ? parseInt(e.drink_to) : null,
+      }])
+    }
+    setSaving(false)
+    setModal(null)
+    fetchAll()
+  }
+
   if (selected) {
     const wine = wines.find(w => w.id === selected)
     if (!wine) { setSelected(null); return null }
@@ -119,6 +157,7 @@ export default function CellarList() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14 }}>
           <h1 style={{ fontSize: 28 }}>Wine Cellar</h1>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setModal('import')} title="Import scores from screenshot">📊 Import scores</button>
             <button className="btn btn-primary btn-sm" onClick={() => setModal('scan')}>📷 Scan</button>
             <button className="btn btn-secondary btn-sm" onClick={() => { setScannedData({}); setModal('addWine') }}>+ Add</button>
           </div>
@@ -185,10 +224,8 @@ export default function CellarList() {
                   <span style={{ fontWeight: 400 }}>{wList.length}</span>
                 </div>
                 <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                  {wList.map((w, i) => (
-                    <WineRow key={w.id} wine={w} bottles={bottlesForWine(w.id)}
-                      onClick={() => setSelected(w.id)}
-                    />
+                  {wList.map(w => (
+                    <WineRow key={w.id} wine={w} bottles={bottlesForWine(w.id)} onClick={() => setSelected(w.id)} />
                   ))}
                 </div>
               </div>
@@ -202,6 +239,15 @@ export default function CellarList() {
       {modal === 'scan' && (
         <Modal title="Scan wine label" onClose={() => setModal(null)}>
           <Scanner onScanned={handleScanned} onCancel={() => setModal(null)} />
+        </Modal>
+      )}
+
+      {modal === 'import' && (
+        <Modal title="Import scores from screenshot" onClose={() => setModal(null)} wide>
+          {saving
+            ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /><p style={{ marginTop: 12, fontSize: 13, color: 'var(--ink-light)' }}>Updating wines…</p></div>
+            : <ScoreImport wines={wines} onApply={applyScoreImport} onCancel={() => setModal(null)} />
+          }
         </Modal>
       )}
 
