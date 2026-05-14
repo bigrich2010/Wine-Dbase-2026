@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getVintageChart } from '../lib/vintageCharts'
 import { supabase } from '../lib/supabase'
 import { drinkingStatus, formatPrice, BOTTLE_STATUSES } from '../lib/helpers'
 import Modal from '../components/Modal'
@@ -209,6 +210,23 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
           </div>
         ))
       )}
+
+      {(() => {
+        const vc = getVintageChart(wine.region, wine.type)
+        const vEntry = vc && wine.vintage && vc.vintages[wine.vintage]
+        if (!vc || !vEntry) return null
+        return (
+          <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', marginBottom: 8 }}>
+              {vc.description} · {wine.vintage} vintage
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+              <div style={{ fontSize: 28, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>{vEntry.score}</div>
+              <div style={{ fontSize: 13, color: 'var(--ink-mid)', lineHeight: 1.5 }}>{vEntry.summary}</div>
+            </div>
+          </div>
+        )
+      })()}
 
       <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
         <button onClick={deleteWine} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--ink-light)', textDecoration: 'underline' }}>Delete this wine</button>
