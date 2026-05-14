@@ -10,6 +10,9 @@ import BottleForm from '../components/BottleForm'
 import ScoreImport from '../components/ScoreImport'
 import AskCellar from './AskCellar'
 import Analytics from './Analytics'
+import DrunkHeroes from './DrunkHeroes'
+import WantList from './WantList'
+import QuickCapture from '../components/QuickCapture'
 
 export default function CellarList() {
   const [wines, setWines] = useState([])
@@ -146,6 +149,35 @@ export default function CellarList() {
     fetchAll()
   }
 
+  const saveQuickCapture = async (form) => {
+    setSaving(true)
+    const { data: newWine } = await supabase.from('wines').insert([{
+      producer: form.producer || 'Unknown',
+      wine_name: form.wine_name || null,
+      vintage: form.vintage ? parseInt(form.vintage) : null,
+      type: form.type || 'Red',
+      region: form.region || null,
+    }]).select().single()
+
+    if (newWine) {
+      await supabase.from('bottles').insert([{
+        wine_id: newWine.id,
+        status: form.where_type === 'Restaurant' ? 'Enjoyed at restaurant' : 'Consumed',
+        consumed_date: form.date || new Date().toISOString().split('T')[0],
+        restaurant_name: form.restaurant_name || null,
+        shared_with: form.shared_with || null,
+        rating: form.rating || null,
+        tasting_note: form.note || null,
+        where_type: form.where_type || null,
+        reorder: form.reorder || false,
+        drunk_hero: true,
+      }])
+    }
+    setSaving(false)
+    setModal(null)
+    fetchAll()
+  }
+
   if (selected) {
     const wine = wines.find(w => w.id === selected)
     if (!wine) { setSelected(null); return null }
@@ -159,6 +191,7 @@ export default function CellarList() {
           <h1 style={{ fontSize: 28 }}>Wine Cellar</h1>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary btn-sm" onClick={() => setModal('import')} title="Import scores from screenshot">📊 Import scores</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setModal('quickCapture')} title="Quick capture a wine you've tried">⚡ Capture</button>
             <button className="btn btn-primary btn-sm" onClick={() => setModal('scan')}>📷 Scan</button>
             <button className="btn btn-secondary btn-sm" onClick={() => { setScannedData({}); setModal('addWine') }}>+ Add</button>
           </div>
@@ -179,7 +212,7 @@ export default function CellarList() {
         </div>
 
         <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[['cellar','Cellar'],['analytics','Analytics'],['ask','Ask']].map(([key, label]) => (
+          {[['cellar','Cellar'],['analytics','Analytics'],['heroes','🏆 Heroes'],['want','🔁 Want'],['ask','Ask']].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)} style={{
               padding: '10px 14px', fontSize: 13, fontWeight: tab === key ? 500 : 400,
               background: 'none', border: 'none', cursor: 'pointer',
@@ -237,6 +270,17 @@ export default function CellarList() {
 
       {tab === 'ask' && <div style={{ padding: '12px 16px 0' }}><AskCellar wines={wines} bottles={bottles} /></div>}
       {tab === 'analytics' && <div style={{ padding: '12px 16px 0' }}><Analytics wines={wines} bottles={bottles} /></div>}
+      {tab === 'heroes' && <div style={{ padding: '12px 16px 0' }}><DrunkHeroes wines={wines} bottles={bottles} /></div>}
+      {tab === 'want' && <div style={{ padding: '12px 16px 0' }}><WantList wines={wines} bottles={bottles} /></div>}
+
+      {modal === 'quickCapture' && (
+        <Modal title="⚡ Quick capture" onClose={() => setModal(null)}>
+          {saving
+            ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
+            : <QuickCapture onSave={saveQuickCapture} onCancel={() => setModal(null)} />
+          }
+        </Modal>
+      )}
 
       {modal === 'scan' && (
         <Modal title="Scan wine label" onClose={() => setModal(null)}>
