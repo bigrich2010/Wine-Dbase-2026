@@ -13,6 +13,7 @@ import Analytics from './Analytics'
 import DrunkHeroes from './DrunkHeroes'
 import WantList from './WantList'
 import QuickCapture from '../components/QuickCapture'
+import BatchImport from '../components/BatchImport'
 
 export default function CellarList() {
   const [wines, setWines] = useState([])
@@ -149,6 +150,40 @@ export default function CellarList() {
     fetchAll()
   }
 
+  const saveBatchImport = async (items) => {
+    setSaving(true)
+    for (const item of items) {
+      const e = item.extracted
+      let wineId = item.match?.id
+
+      if (!wineId) {
+        const { data: newWine } = await supabase.from('wines').insert([{
+          producer: e.producer,
+          wine_name: e.wine_name || null,
+          vintage: e.vintage ? parseInt(e.vintage) : null,
+          type: e.type || 'Red',
+          region: e.region || null,
+        }]).select().single()
+        wineId = newWine?.id
+      }
+
+      if (wineId) {
+        await supabase.from('bottles').insert([{
+          wine_id: wineId,
+          status: 'In cellar',
+          quantity: parseInt(e.quantity) || 1,
+          purchase_date: e.purchase_date || null,
+          purchase_price: e.price_per_bottle ? parseFloat(e.price_per_bottle) : null,
+          purchase_source: e.source || null,
+          auction_lot: e.auction_lot || null,
+        }])
+      }
+    }
+    setSaving(false)
+    setModal(null)
+    fetchAll()
+  }
+
   const saveQuickCapture = async (form) => {
     setSaving(true)
     const { data: newWine } = await supabase.from('wines').insert([{
@@ -192,6 +227,7 @@ export default function CellarList() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary btn-sm" onClick={() => setModal('import')} title="Import scores from screenshot">📊 Import scores</button>
             <button className="btn btn-secondary btn-sm" onClick={() => setModal('quickCapture')} title="Quick capture a wine you've tried">⚡ Capture</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setModal('batchImport')} title="Import from receipt or cellar list">🧾 Batch</button>
             <button className="btn btn-primary btn-sm" onClick={() => setModal('scan')}>📷 Scan</button>
             <button className="btn btn-secondary btn-sm" onClick={() => { setScannedData({}); setModal('addWine') }}>+ Add</button>
           </div>
@@ -272,6 +308,15 @@ export default function CellarList() {
       {tab === 'analytics' && <div style={{ padding: '12px 16px 0' }}><Analytics wines={wines} bottles={bottles} /></div>}
       {tab === 'heroes' && <div style={{ padding: '12px 16px 0' }}><DrunkHeroes wines={wines} bottles={bottles} /></div>}
       {tab === 'want' && <div style={{ padding: '12px 16px 0' }}><WantList wines={wines} bottles={bottles} /></div>}
+
+      {modal === 'batchImport' && (
+        <Modal title="🧾 Batch import" onClose={() => setModal(null)} wide>
+          {saving
+            ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /><p style={{ marginTop: 12, fontSize: 13, color: 'var(--ink-light)' }}>Importing wines and bottles…</p></div>
+            : <BatchImport wines={wines} onApply={saveBatchImport} onCancel={() => setModal(null)} />
+          }
+        </Modal>
+      )}
 
       {modal === 'quickCapture' && (
         <Modal title="⚡ Quick capture" onClose={() => setModal(null)}>
