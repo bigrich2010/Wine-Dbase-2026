@@ -2,19 +2,111 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import Modal from '../components/Modal'
 import DiningWineScanner from '../components/DiningWineScanner'
+import ReceiptScanner from '../components/ReceiptScanner'
 import DiningForm from '../components/DiningForm'
 
 const TYPE_ICON = { Restaurant: '🍽', Home: '🏠', Event: '🍷' }
 
-function Stars({ n }) {
+function Stars({ n, size = 13 }) {
   if (!n) return null
-  return <span style={{ color: '#B8912A', fontSize: 13 }}>{'★'.repeat(n)}</span>
+  return <span style={{ color: '#B8912A', fontSize: size }}>{'★'.repeat(n)}</span>
+}
+
+function DiningDetail({ entry, wines, foodItems, onClose, onEdit, onDelete }) {
+  return (
+    <div style={{ paddingBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 22, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>
+            {TYPE_ICON[entry.type]} {entry.venue || 'Unnamed'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <span>{new Date(entry.date).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            {entry.suburb && <span>{entry.suburb}</span>}
+          </div>
+        </div>
+        <Stars n={entry.rating} size={22} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, fontSize: 12, color: 'var(--ink-light)' }}>
+        {entry.who_with && <span>👥 {entry.who_with}</span>}
+        {entry.occasion && entry.occasion !== 'Casual' && <span style={{ padding: '2px 8px', borderRadius: 20, background: 'var(--cream-dark)', fontSize: 11 }}>{entry.occasion}</span>}
+      </div>
+
+      {wines.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', marginBottom: 8 }}>Wines</div>
+          {wines.map(w => (
+            <div key={w.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 14, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>
+                  {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''} {w.vintage || ''}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ink-light)', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {w.source && <span>{w.source}</span>}
+                  {w.brought_by && <span>by {w.brought_by}</span>}
+                  {w.price && <span>${w.price}</span>}
+                  {w.drunk_hero && <span style={{ color: 'var(--wine)' }}>🏆 Hero</span>}
+                  {w.reorder && <span style={{ color: 'var(--amber)' }}>🔁 Want</span>}
+                </div>
+                {w.tasting_note && <div style={{ fontSize: 12, color: 'var(--ink-mid)', fontStyle: 'italic', marginTop: 4 }}>"{w.tasting_note}"</div>}
+              </div>
+              <Stars n={w.rating} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {foodItems.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', marginBottom: 8 }}>Food</div>
+          {foodItems.map(f => (
+            <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+              <div>
+                {f.course && <span style={{ fontSize: 10, color: 'var(--ink-light)', marginRight: 6, textTransform: 'uppercase' }}>{f.course}</span>}
+                {f.dish}
+              </div>
+              {f.price && <span style={{ color: 'var(--ink-light)', flexShrink: 0 }}>${f.price}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {entry.food_notes && (
+        <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.6 }}>
+          {entry.food_notes}
+        </div>
+      )}
+
+      {(entry.food_total || entry.wine_total || entry.grand_total) && (
+        <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+            {entry.food_total && <span>Food <span style={{ fontWeight: 500 }}>${entry.food_total}</span></span>}
+            {entry.wine_total && <span>Wine <span style={{ fontWeight: 500 }}>${entry.wine_total}</span></span>}
+            {entry.grand_total && <span>Total <span style={{ fontWeight: 600, fontSize: 15 }}>${entry.grand_total}</span></span>}
+          </div>
+        </div>
+      )}
+
+      {entry.general_notes && (
+        <div style={{ fontSize: 13, color: 'var(--ink-mid)', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 16 }}>
+          "{entry.general_notes}"
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+        <button className="btn btn-secondary btn-sm" onClick={onDelete} style={{ color: '#A32D2D', borderColor: '#F09595' }}>Delete</button>
+        <button className="btn btn-primary btn-sm" onClick={onEdit}>Edit entry</button>
+      </div>
+    </div>
+  )
 }
 
 function DiningCard({ entry, wines, onClick }) {
   const wineCount = wines.length
   return (
-    <div className="card" style={{ padding: '14px 16px', cursor: 'pointer' }} onClick={onClick}
+    <div className="card" style={{ padding: '14px 16px', cursor: 'pointer' }}
+      onClick={onClick}
       onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-mid)'}
       onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
     >
@@ -32,20 +124,15 @@ function DiningCard({ entry, wines, onClick }) {
             {entry.occasion && entry.occasion !== 'Casual' && <span style={{ padding: '1px 7px', borderRadius: 20, background: 'var(--cream-dark)', fontSize: 11 }}>{entry.occasion}</span>}
           </div>
           {wineCount > 0 && (
-            <div style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 5 }}>
               🍷 {wines.map(w => `${w.producer}${w.wine_name ? ' ' + w.wine_name : ''}${w.vintage ? ' ' + w.vintage : ''}`).join(', ')}
             </div>
           )}
-          {entry.general_notes && (
-            <div style={{ fontSize: 12, color: 'var(--ink-mid)', fontStyle: 'italic', marginTop: 6, lineHeight: 1.5 }}>
-              "{entry.general_notes}"
-            </div>
-          )}
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, fontSize: 12, color: 'var(--ink-light)' }}>
-          {entry.grand_total && <div style={{ fontWeight: 500, color: 'var(--ink)' }}>${entry.grand_total}</div>}
-          {wineCount > 0 && <div>{wineCount} wine{wineCount !== 1 ? 's' : ''}</div>}
-          <div style={{ marginTop: 4, color: 'var(--ink-light)', fontSize: 14 }}>›</div>
+        <div style={{ textAlign: 'right', flexShrink: 0, fontSize: 12 }}>
+          {entry.grand_total && <div style={{ fontWeight: 500 }}>${entry.grand_total}</div>}
+          {wineCount > 0 && <div style={{ color: 'var(--ink-light)' }}>{wineCount} wine{wineCount !== 1 ? 's' : ''}</div>}
+          <div style={{ color: 'var(--ink-light)', fontSize: 14, marginTop: 4 }}>›</div>
         </div>
       </div>
     </div>
@@ -55,102 +142,122 @@ function DiningCard({ entry, wines, onClick }) {
 export default function Dining({ cellarWines }) {
   const [entries, setEntries] = useState([])
   const [diningWines, setDiningWines] = useState([])
+  const [foodItems, setFoodItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
   const [scannedWines, setScannedWines] = useState([])
+  const [scannedReceipt, setScannedReceipt] = useState(null)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
   const [selected, setSelected] = useState(null)
+  const [editEntry, setEditEntry] = useState(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [{ data: e }, { data: w }] = await Promise.all([
+    const [{ data: e }, { data: w }, { data: f }] = await Promise.all([
       supabase.from('dining').select('*').order('date', { ascending: false }),
       supabase.from('dining_wines').select('*'),
+      supabase.from('dining_food').select('*'),
     ])
     setEntries(e || [])
     setDiningWines(w || [])
+    setFoodItems(f || [])
     setLoading(false)
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const winesForEntry = (id) => diningWines.filter(w => w.dining_id === id)
+  const foodForEntry = (id) => foodItems.filter(f => f.dining_id === id)
 
-  const handleScanned = (wines, preview) => {
-    setScannedWines(wines)
-    setModal('form')
-  }
-
-  const saveEntry = async (form, wines) => {
+  const saveEntry = async (form, wines, food) => {
     setSaving(true)
 
-    const { data: entry } = await supabase.from('dining').insert([{
-      type: form.type,
-      date: form.date,
-      venue: form.venue || null,
-      suburb: form.suburb || null,
-      who_with: form.who_with || null,
-      occasion: form.occasion,
-      rating: form.rating || null,
-      food_notes: form.food_notes || null,
-      general_notes: form.general_notes || null,
-      food_total: form.food_total ? parseFloat(form.food_total) : null,
-      wine_total: form.wine_total ? parseFloat(form.wine_total) : null,
-      grand_total: form.grand_total ? parseFloat(form.grand_total) : null,
-    }]).select().single()
+    let entryId = editEntry?.id
 
-    if (entry && wines.length) {
+    if (editEntry) {
+      await supabase.from('dining').update({
+        type: form.type, date: form.date, venue: form.venue || null,
+        suburb: form.suburb || null, who_with: form.who_with || null,
+        occasion: form.occasion, rating: form.rating || null,
+        food_notes: form.food_notes || null, general_notes: form.general_notes || null,
+        food_total: form.food_total ? parseFloat(form.food_total) : null,
+        wine_total: form.wine_total ? parseFloat(form.wine_total) : null,
+        grand_total: form.grand_total ? parseFloat(form.grand_total) : null,
+      }).eq('id', entryId)
+      await supabase.from('dining_wines').delete().eq('dining_id', entryId)
+      await supabase.from('dining_food').delete().eq('dining_id', entryId)
+    } else {
+      const { data: entry } = await supabase.from('dining').insert([{
+        type: form.type, date: form.date, venue: form.venue || null,
+        suburb: form.suburb || null, who_with: form.who_with || null,
+        occasion: form.occasion, rating: form.rating || null,
+        food_notes: form.food_notes || null, general_notes: form.general_notes || null,
+        food_total: form.food_total ? parseFloat(form.food_total) : null,
+        wine_total: form.wine_total ? parseFloat(form.wine_total) : null,
+        grand_total: form.grand_total ? parseFloat(form.grand_total) : null,
+      }]).select().single()
+      entryId = entry?.id
+    }
+
+    if (entryId) {
       for (const w of wines) {
         await supabase.from('dining_wines').insert([{
-          dining_id: entry.id,
-          wine_id: w.wine_id || null,
-          producer: w.producer || null,
-          wine_name: w.wine_name || null,
+          dining_id: entryId, wine_id: w.wine_id || null,
+          producer: w.producer || null, wine_name: w.wine_name || null,
           vintage: w.vintage ? parseInt(w.vintage) : null,
-          type: w.type || 'Red',
-          region: w.region || null,
-          source: w.source || 'Restaurant list',
-          brought_by: w.brought_by || null,
+          type: w.type || 'Red', region: w.region || null,
+          source: w.source || 'Restaurant list', brought_by: w.brought_by || null,
           price: w.price ? parseFloat(w.price) : null,
-          rating: w.rating || null,
-          tasting_note: w.tasting_note || null,
-          drunk_hero: w.drunk_hero || false,
-          reorder: w.reorder || false,
+          rating: w.rating || null, tasting_note: w.tasting_note || null,
+          drunk_hero: w.drunk_hero || false, reorder: w.reorder || false,
         }])
-
-        // Create Drunk Hero bottle record if flagged
         if (w.drunk_hero && w.producer) {
           let wineId = w.wine_id
           if (!wineId) {
-            const { data: newWine } = await supabase.from('wines').insert([{
+            const { data: nw } = await supabase.from('wines').insert([{
               producer: w.producer, wine_name: w.wine_name || null,
               vintage: w.vintage ? parseInt(w.vintage) : null,
               type: w.type || 'Red', region: w.region || null,
             }]).select().single()
-            wineId = newWine?.id
+            wineId = nw?.id
           }
           if (wineId) {
             await supabase.from('bottles').insert([{
               wine_id: wineId, status: 'Enjoyed at restaurant',
-              consumed_date: form.date,
-              restaurant_name: form.venue || null,
-              shared_with: form.who_with || null,
-              rating: w.rating || null,
-              tasting_note: w.tasting_note || null,
-              drunk_hero: true,
+              consumed_date: form.date, restaurant_name: form.venue || null,
+              shared_with: form.who_with || null, rating: w.rating || null,
+              tasting_note: w.tasting_note || null, drunk_hero: true,
               reorder: w.reorder || false,
               where_type: form.type === 'Home' ? 'Home' : form.type === 'Event' ? 'Event' : 'Restaurant',
             }])
           }
         }
       }
+
+      for (const f of (food || [])) {
+        if (!f.dish) continue
+        await supabase.from('dining_food').insert([{
+          dining_id: entryId, course: f.course || null,
+          dish: f.dish, price: f.price ? parseFloat(f.price) : null,
+        }])
+      }
     }
 
     setSaving(false)
     setModal(null)
+    setEditEntry(null)
     setScannedWines([])
+    setScannedReceipt(null)
+    setSelected(null)
+    fetchAll()
+  }
+
+  const deleteEntry = async (id) => {
+    if (!confirm('Delete this dining entry?')) return
+    await supabase.from('dining').delete().eq('id', id)
+    setSelected(null)
     fetchAll()
   }
 
@@ -185,7 +292,7 @@ export default function Dining({ cellarWines }) {
           <option value="">All types</option>
           <option>Restaurant</option><option>Home</option><option>Event</option>
         </select>
-        <button className="btn btn-primary btn-sm" onClick={() => setModal('scan')}>+ New entry</button>
+        <button className="btn btn-primary btn-sm" onClick={() => setModal('choose')}>+ New entry</button>
       </div>
 
       {loading ? (
@@ -199,13 +306,34 @@ export default function Dining({ cellarWines }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(e => (
-            <DiningCard key={e.id} entry={e} wines={winesForEntry(e.id)} onClick={() => setSelected(e)} />
+            <DiningCard key={e.id} entry={e} wines={winesForEntry(e.id)}
+              onClick={() => setSelected(e)} />
           ))}
         </div>
       )}
 
-      {modal === 'scan' && (
+      {modal === 'choose' && (
         <Modal title="New dining entry" onClose={() => setModal(null)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 13, color: 'var(--ink-light)', textAlign: 'center', marginBottom: 4 }}>How would you like to start?</p>
+            <button className="btn btn-primary" style={{ justifyContent: 'center', padding: 14, fontSize: 14 }}
+              onClick={() => setModal('scanReceipt')}>
+              🧾 Scan receipt — fills restaurant, date, food & wines
+            </button>
+            <button className="btn btn-secondary" style={{ justifyContent: 'center', padding: 14, fontSize: 14 }}
+              onClick={() => setModal('choose')}>
+              📸 Photo of wine bottles — fills wine list
+            </button>
+            <button className="btn btn-ghost" style={{ justifyContent: 'center' }}
+              onClick={() => setModal('form')}>
+              Fill in manually
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === 'scanWines' && (
+        <Modal title="Photo of wines" onClose={() => setModal('form')}>
           <DiningWineScanner
             onScanned={(wines) => { setScannedWines(wines); setModal('form') }}
             onCancel={() => { setScannedWines([]); setModal('form') }}
@@ -213,12 +341,46 @@ export default function Dining({ cellarWines }) {
         </Modal>
       )}
 
+      {modal === 'scanReceipt' && (
+        <Modal title="Scan receipt" onClose={() => setModal('form')}>
+          <ReceiptScanner
+            onScanned={(data) => {
+              setScannedReceipt(data)
+              if (data.wines && data.wines.length) setScannedWines(data.wines)
+              setModal('form')
+            }}
+            onSkip={() => setModal('form')}
+          />
+        </Modal>
+      )}
+
       {modal === 'form' && (
-        <Modal title="Dining entry" onClose={() => { setModal(null); setScannedWines([]) }} wide>
+        <Modal title={editEntry ? 'Edit dining entry' : 'New dining entry'} onClose={() => { setModal(null); setEditEntry(null); setScannedWines([]); setScannedReceipt(null) }} wide>
           {saving
             ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /><p style={{ marginTop: 12, fontSize: 13, color: 'var(--ink-light)' }}>Saving…</p></div>
-            : <DiningForm scannedWines={scannedWines} onSave={saveEntry} onCancel={() => { setModal(null); setScannedWines([]) }} />
+            : <DiningForm
+                initial={editEntry || (scannedReceipt ? { venue: scannedReceipt.venue, suburb: scannedReceipt.suburb, food_total: scannedReceipt.food_total, wine_total: scannedReceipt.wine_total, grand_total: scannedReceipt.grand_total } : {})}
+                scannedWines={scannedWines}
+                scannedFood={scannedReceipt?.food_items || []}
+                existingWines={editEntry ? winesForEntry(editEntry.id) : []}
+                existingFood={editEntry ? foodForEntry(editEntry.id) : []}
+                onSave={saveEntry}
+                onCancel={() => { setModal(null); setEditEntry(null); setScannedWines([]); setScannedReceipt(null) }}
+              />
           }
+        </Modal>
+      )}
+
+      {selected && (
+        <Modal title="Dining entry" onClose={() => setSelected(null)} wide>
+          <DiningDetail
+            entry={selected}
+            wines={winesForEntry(selected.id)}
+            foodItems={foodForEntry(selected.id)}
+            onClose={() => setSelected(null)}
+            onEdit={() => { setEditEntry(selected); setModal('form'); setSelected(null) }}
+            onDelete={() => deleteEntry(selected.id)}
+          />
         </Modal>
       )}
     </div>
