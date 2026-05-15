@@ -62,7 +62,7 @@ Format with line breaks for readability.`
     try {
       const resp = await fetch('/api/claude', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-5-20251001', max_tokens: 800, system: sys, messages: newHistory })
+        body: JSON.stringify({  max_tokens: 800, system: sys, messages: newHistory })
       })
       const data = await resp.json()
       const reply = data.content?.find(c => c.type === 'text')?.text || 'Sorry, could not generate a response.'
