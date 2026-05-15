@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getVintageChart } from '../lib/vintageCharts'
 import { supabase } from '../lib/supabase'
-import { drinkingStatus, formatPrice, BOTTLE_STATUSES } from '../lib/helpers'
+import { drinkingStatus, effectiveDrinkingWindow, formatPrice, BOTTLE_STATUSES } from '../lib/helpers'
 import Modal from '../components/Modal'
 import WineForm from '../components/WineForm'
 import BottleForm from '../components/BottleForm'
@@ -13,7 +13,10 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
   const [saving, setSaving] = useState(false)
   const [drinkBottle, setDrinkBottle] = useState(null)
 
-  const ds = drinkingStatus(wine)
+  const dsResult = drinkingStatus(wine)
+  const ds = dsResult?.status
+  const dsEstimated = dsResult?.estimated
+  const effectiveWindow = effectiveDrinkingWindow(wine)
   const year = new Date().getFullYear()
 
   const grouped = BOTTLE_STATUSES.reduce((acc, s) => {
@@ -163,14 +166,20 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
         ))}
       </div>
 
-      {(wine.drink_from || wine.drink_to || scores.length > 0) && (
+      {(effectiveWindow || scores.length > 0) && (
         <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
-          {(wine.drink_from || wine.drink_to) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: scores.length ? 14 : 0 }}>
-              <span style={{ fontSize: 11, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Drink</span>
-              <span style={{ fontSize: 15, fontWeight: 500 }}>{wine.drink_from || '?'} — {wine.drink_to || '?'}</span>
-              {ds === 'ready' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>In window</span>}
-              {ds === 'early' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--amber-pale)', color: 'var(--amber)' }}>Too early · {wine.drink_from - year}yr to go</span>}
+          {effectiveWindow && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: scores.length ? 14 : 0, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: 'var(--ink-light)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {dsEstimated ? 'Est. drink' : 'Drink'}
+              </span>
+              <span style={{ fontSize: 15, fontWeight: 500, opacity: dsEstimated ? 0.7 : 1 }}>
+                {dsEstimated ? '~' : ''}{effectiveWindow.from || '?'} — {effectiveWindow.to || '?'}
+              </span>
+              {dsEstimated && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--cream-dark)', color: 'var(--ink-light)' }}>Estimated</span>}
+              {ds === 'ready' && !dsEstimated && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>In window</span>}
+              {ds === 'ready' && dsEstimated && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)', opacity: 0.7 }}>Approx. ready</span>}
+              {ds === 'early' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--amber-pale)', color: 'var(--amber)' }}>Too early · {effectiveWindow.from - year}yr to go</span>}
               {ds === 'past' && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#FCE8E8', color: '#8B1A1A' }}>Past peak</span>}
             </div>
           )}
