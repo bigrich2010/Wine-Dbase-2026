@@ -1,3 +1,4 @@
+import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 import { useState, useRef } from 'react'
 
 export default function BatchImport({ wines, onApply, onCancel }) {
@@ -19,7 +20,7 @@ export default function BatchImport({ wines, onApply, onCancel }) {
         canvas.width = img.width
         canvas.height = img.height
         canvas.getContext('2d').drawImage(img, 0, 0)
-        const jpeg = canvas.toDataURL('image/jpeg', 0.92)
+        const jpeg = canvas.toDataURL('image/png')
         analyse(jpeg, 'image/jpeg')
       }
       img.src = ev.target.result
@@ -30,7 +31,7 @@ export default function BatchImport({ wines, onApply, onCancel }) {
   const analyse = async (dataUrl, mimeType) => {
     setPreview(dataUrl)
     setPhase('scanning')
-    const b64 = dataUrl.split(',')[1]
+    const b64 = getBase64(dataUrl)
 
     const prompt = `You are reading a wine purchase receipt, invoice, cellar list, or inventory.
 Extract every wine entry visible. For each wine return:
@@ -54,7 +55,7 @@ Return ONLY a JSON array. No explanation, only JSON.`
           
           max_tokens: 3000,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
