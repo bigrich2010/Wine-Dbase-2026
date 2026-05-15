@@ -93,7 +93,7 @@ export default function QuickCapture({ onSave, onCancel }) {
     try {
       const resp = await fetch('/api/claude', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-5-20251001', max_tokens: 200,
+        body: JSON.stringify({  max_tokens: 200,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
             { type: 'text', text: prompt }
