@@ -60,10 +60,13 @@ Return ONLY a JSON array. No explanation, only JSON.`
         })
       })
       const data = await resp.json()
+      console.log('API response:', JSON.stringify(data).slice(0, 500))
       const txt = data.content?.find(c => c.type === 'text')?.text || ''
+      if (!txt) throw new Error('No text in response: ' + JSON.stringify(data).slice(0, 200))
       const extracted = JSON.parse(txt.replace(/```json|```/g, '').trim())
       matchToCellar(extracted)
     } catch(e) {
+      console.error('Batch import error:', e)
       setPhase('error')
     }
   }
