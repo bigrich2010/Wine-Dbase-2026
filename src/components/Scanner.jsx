@@ -1,3 +1,4 @@
+import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 import { useState, useRef } from 'react'
 
 export default function Scanner({ onScanned, onCancel }) {
@@ -40,7 +41,7 @@ export default function Scanner({ onScanned, onCancel }) {
   const analyse = async (dataUrl) => {
     setPreview(dataUrl)
     setPhase('scanning')
-    const b64 = dataUrl.split(',')[1]
+    const b64 = getBase64(dataUrl)
     const prompt = `You are a wine label reader. Extract all information from this wine label.
 Return ONLY valid JSON (null for missing fields):
 {"producer":"","wine_name":"","vintage":"","type":"Red|White|Rosé|Sparkling|Orange|Fortified","region":"","appellation":"","country":"","grape":"","alcohol":""}
@@ -52,7 +53,7 @@ Use broad region (e.g. "Margaret River", "Burgundy") and specific appellation (e
           
           max_tokens: 400,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
