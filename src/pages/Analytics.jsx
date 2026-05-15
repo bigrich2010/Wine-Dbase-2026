@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { formatPrice } from '../lib/helpers'
+import { formatPrice, effectiveDrinkingWindow } from '../lib/helpers'
 import { VINTAGE_CHARTS, REGION_MAP } from '../lib/vintageCharts'
 
 export default function Analytics({ wines, bottles }) {
@@ -34,20 +34,21 @@ export default function Analytics({ wines, bottles }) {
       const wBottles = inCellar.filter(b => b.wine_id === w.id)
       const count = wBottles.reduce((s, b) => s + (parseInt(b.quantity) || 1), 0)
       if (!count) return
-      if (!w.drink_from && !w.drink_to) { drinkingCurve.noWindow += count; return }
-      if (w.drink_to && year > w.drink_to) { drinkingCurve.now += count; return }
-      if (w.drink_from && year >= w.drink_from) { drinkingCurve.now += count; return }
-      if (w.drink_from <= year + 2) { drinkingCurve.twoYears += count; return }
-      if (w.drink_from <= year + 5) { drinkingCurve.fiveYears += count; return }
+      const window = effectiveDrinkingWindow(w)
+      if (!window) { drinkingCurve.noWindow += count; return }
+      if (window.to && year > window.to) { drinkingCurve.now += count; return }
+      if (window.from && year >= window.from) { drinkingCurve.now += count; return }
+      if (window.from <= year + 2) { drinkingCurve.twoYears += count; return }
+      if (window.from <= year + 5) { drinkingCurve.fiveYears += count; return }
       drinkingCurve.holding += count
     })
 
     const topByScore = wines
-  .filter(w => {
-    const hasScore = w.score_winefront || w.score_ray_jordan || w.score_halliday || w.score_wine_advocate
-    const hasBottles = inCellar.some(b => b.wine_id === w.id)
-    return hasScore && hasBottles
-  })
+      .filter(w => {
+        const hasScore = w.score_winefront || w.score_ray_jordan || w.score_halliday || w.score_wine_advocate
+        const hasBottles = inCellar.some(b => b.wine_id === w.id)
+        return hasScore && hasBottles
+      })
       .map(w => {
         const scores = [w.score_winefront, w.score_ray_jordan, w.score_halliday, w.score_wine_advocate]
           .filter(Boolean)
