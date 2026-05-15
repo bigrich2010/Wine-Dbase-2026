@@ -75,7 +75,7 @@ Use null for missing fields. Empty arrays if none found. Extract every food dish
       const resp = await fetch('/api/claude', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5', max_tokens: 2000,
+          model: 'claude-sonnet-4-5-20251001', max_tokens: 2000,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
             { type: 'text', text: prompt }
