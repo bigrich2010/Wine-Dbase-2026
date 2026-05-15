@@ -1,3 +1,4 @@
+import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 import { useState, useRef } from 'react'
 
 export default function DiningWineScanner({ onScanned, onCancel }) {
@@ -40,7 +41,7 @@ export default function DiningWineScanner({ onScanned, onCancel }) {
         const canvas = document.createElement('canvas')
         canvas.width = img.width; canvas.height = img.height
         canvas.getContext('2d').drawImage(img, 0, 0)
-        analyse(canvas.toDataURL('image/jpeg', 0.92))
+        analyse(canvas.toDataURL('image/png'))
       }
       img.src = ev.target.result
     }
@@ -50,7 +51,7 @@ export default function DiningWineScanner({ onScanned, onCancel }) {
   const analyse = async (dataUrl) => {
     setPreview(dataUrl)
     setPhase('scanning')
-    const b64 = dataUrl.split(',')[1]
+    const b64 = getBase64(dataUrl)
 
     const prompt = `You are reading a photo of wine bottles or a wine list. Extract every wine visible.
 For each wine return:
@@ -68,7 +69,7 @@ Return ONLY a JSON array. No explanation.`
         body: JSON.stringify({
            max_tokens: 1500,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
