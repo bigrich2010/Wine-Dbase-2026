@@ -1,3 +1,4 @@
+import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 import { useState, useRef } from 'react'
 
 const WHERE_OPTIONS = ['Restaurant', 'Bar', "Friend's", 'Event', 'Tasting', 'Other']
@@ -77,7 +78,7 @@ export default function QuickCapture({ onSave, onCancel }) {
         canvas.width = img.width
         canvas.height = img.height
         canvas.getContext('2d').drawImage(img, 0, 0)
-        scanImage(canvas.toDataURL('image/jpeg', 0.92))
+        scanImage(canvas.toDataURL('image/png'))
       }
       img.src = ev.target.result
     }
@@ -87,7 +88,7 @@ export default function QuickCapture({ onSave, onCancel }) {
   const scanImage = async (dataUrl) => {
     setPreview(dataUrl)
     setScanning(true)
-    const b64 = dataUrl.split(',')[1]
+    const b64 = getBase64(dataUrl)
     const prompt = `Extract wine label info. Return ONLY JSON:
 {"producer":"","wine_name":"","vintage":"","type":"Red|White|Rosé|Sparkling|Orange|Fortified","region":""}`
     try {
@@ -95,7 +96,7 @@ export default function QuickCapture({ onSave, onCancel }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({  max_tokens: 200,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
