@@ -1,3 +1,4 @@
+import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 import { useState, useRef } from 'react'
 
 export default function ScoreImport({ wines, onApply, onCancel }) {
@@ -15,10 +16,10 @@ export default function ScoreImport({ wines, onApply, onCancel }) {
     reader.readAsDataURL(file)
   }
 
-  const analyse = async (dataUrl) => {
+  const analyse = async (dataUrl, mimeType = 'image/png') => {
     setPreview(dataUrl)
     setPhase('scanning')
-    const b64 = dataUrl.split(',')[1]
+    const b64 = getBase64(dataUrl)
 
     const prompt = `You are reading a wine critic review or ratings page. This is NOT a purchase receipt.
 Extract every wine listed with its CRITIC SCORE and DRINKING WINDOW.
@@ -49,7 +50,7 @@ Rules:
           
           max_tokens: 3000,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
