@@ -5,19 +5,17 @@ export default function ScoreImport({ wines, onApply, onCancel }) {
   const [preview, setPreview] = useState(null)
   const [matches, setMatches] = useState([])
   const [selected, setSelected] = useState({})
-  const [mediaType, setMediaType] = useState('image/jpeg')
   const fileRef = useRef(null)
 
   const handleFile = e => {
     const file = e.target.files[0]
     if (!file) return
-    setMediaType(file.type || 'image/jpeg')
     const reader = new FileReader()
-    reader.onload = ev => analyse(ev.target.result, file.type || 'image/jpeg')
+    reader.onload = ev => analyse(ev.target.result)
     reader.readAsDataURL(file)
   }
 
-  const analyse = async (dataUrl, mimeType) => {
+  const analyse = async (dataUrl) => {
     setPreview(dataUrl)
     setPhase('scanning')
     const b64 = dataUrl.split(',')[1]
@@ -43,7 +41,7 @@ Return ONLY a JSON array. No explanation, only JSON.`
           model: 'claude-sonnet-4-5',
           max_tokens: 3000,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
