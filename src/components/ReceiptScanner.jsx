@@ -1,3 +1,4 @@
+import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 import { useState, useRef } from 'react'
 
 export default function ReceiptScanner({ onScanned, onSkip }) {
@@ -40,7 +41,7 @@ export default function ReceiptScanner({ onScanned, onSkip }) {
         const canvas = document.createElement('canvas')
         canvas.width = img.width; canvas.height = img.height
         canvas.getContext('2d').drawImage(img, 0, 0)
-        analyse(canvas.toDataURL('image/jpeg', 0.92))
+        analyse(canvas.toDataURL('image/png'))
       }
       img.src = ev.target.result
     }
@@ -50,7 +51,7 @@ export default function ReceiptScanner({ onScanned, onSkip }) {
   const analyse = async (dataUrl) => {
     setPreview(dataUrl)
     setPhase('scanning')
-    const b64 = dataUrl.split(',')[1]
+    const b64 = getBase64(dataUrl)
 
     const prompt = `You are reading a restaurant receipt, bill, or menu. Extract everything visible.
 Return ONLY valid JSON:
@@ -77,7 +78,7 @@ Use null for missing fields. Empty arrays if none found. Extract every food dish
         body: JSON.stringify({
            max_tokens: 2000,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
