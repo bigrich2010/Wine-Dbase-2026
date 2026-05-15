@@ -40,12 +40,44 @@ export function totalInCellar(bottles) {
   return bottles.filter(b => b.status === 'In cellar').length
 }
 
+export function defaultDrinkingWindow(wine) {
+  if (!wine.vintage) return null
+  const v = parseInt(wine.vintage)
+  const r = (wine.region || '').toLowerCase()
+  const t = wine.type || 'Red'
+
+  if (t === 'Rosé') return { from: v, to: v + 3, estimated: true }
+  if (t === 'Sparkling') return { from: v + 2, to: v + 8, estimated: true }
+  if (t === 'Orange') return { from: v + 1, to: v + 5, estimated: true }
+  if (t === 'Fortified') return { from: v + 5, to: v + 30, estimated: true }
+
+  if (t === 'White') {
+    if (r.includes('burgundy') || r.includes('chardonnay') || r.includes('meursault') || r.includes('puligny') || r.includes('chablis')) return { from: v + 3, to: v + 10, estimated: true }
+    return { from: v + 1, to: v + 5, estimated: true }
+  }
+
+  // Reds
+  if (r.includes('burgundy') || r.includes('côte') || r.includes('cote') || r.includes('gevrey') || r.includes('vosne') || r.includes('chambolle') || r.includes('rhône') || r.includes('rhone') || r.includes('barolo') || r.includes('barbaresco')) return { from: v + 8, to: v + 20, estimated: true }
+  if (r.includes('bordeaux') || r.includes('pauillac') || r.includes('margaux') || r.includes('saint-julien') || r.includes('pomerol') || r.includes('médoc')) return { from: v + 8, to: v + 25, estimated: true }
+  if (r.includes('margaret river')) return { from: v + 6, to: v + 18, estimated: true }
+  if (r.includes('barossa')) return { from: v + 4, to: v + 15, estimated: true }
+  return { from: v + 3, to: v + 10, estimated: true }
+}
+
+export function effectiveDrinkingWindow(wine) {
+  if (wine.drink_from || wine.drink_to) {
+    return { from: wine.drink_from, to: wine.drink_to, estimated: false }
+  }
+  return defaultDrinkingWindow(wine)
+}
+
 export function drinkingStatus(wine) {
   const year = new Date().getFullYear()
-  if (!wine.drink_from && !wine.drink_to) return null
-  if (wine.drink_to && year > wine.drink_to) return 'past'
-  if (wine.drink_from && year < wine.drink_from) return 'early'
-  return 'ready'
+  const window = effectiveDrinkingWindow(wine)
+  if (!window) return null
+  if (window.to && year > window.to) return { status: 'past', estimated: window.estimated }
+  if (window.from && year < window.from) return { status: 'early', estimated: window.estimated }
+  return { status: 'ready', estimated: window.estimated }
 }
 
 export function formatPrice(p) {
