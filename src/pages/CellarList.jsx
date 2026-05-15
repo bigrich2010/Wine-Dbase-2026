@@ -222,14 +222,14 @@ export default function CellarList() {
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       <header style={{ padding: '16px 16px 0', borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14 }}>
-          <h1 style={{ fontSize: 28 }}>Wine Cellar</h1>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => setModal('import')} title="Import scores from screenshot">📊 Import scores</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => setModal('quickCapture')} title="Quick capture a wine you've tried">⚡ Capture</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => setModal('batchImport')} title="Import from receipt or cellar list">🧾 Batch</button>
+        <div style={{ paddingBottom: 10 }}>
+          <h1 style={{ fontSize: 26, marginBottom: 10 }}>Marmion Wine Cellar</h1>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-primary btn-sm" onClick={() => setModal('scan')}>📷 Scan</button>
             <button className="btn btn-secondary btn-sm" onClick={() => { setScannedData({}); setModal('addWine') }}>+ Add</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setModal('quickCapture')}>⚡ Capture</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setModal('batchImport')}>🧾 Batch</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setModal('import')}>📊 Scores</button>
           </div>
         </div>
 
