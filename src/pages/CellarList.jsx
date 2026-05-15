@@ -12,6 +12,7 @@ import AskCellar from './AskCellar'
 import Analytics from './Analytics'
 import DrunkHeroes from './DrunkHeroes'
 import WantList from './WantList'
+import Dining from './Dining'
 import QuickCapture from '../components/QuickCapture'
 import BatchImport from '../components/BatchImport'
 
@@ -248,7 +249,7 @@ export default function CellarList() {
         </div>
 
         <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[['cellar','Cellar'],['analytics','Analytics'],['heroes','🏆 Heroes'],['want','🔁 Want'],['ask','Ask']].map(([key, label]) => (
+          {[['cellar','Cellar'],['analytics','Analytics'],['dining','🍽 Dining'],['heroes','🏆 Heroes'],['want','🔁 Want'],['ask','Ask']].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)} style={{
               padding: '10px 14px', fontSize: 13, fontWeight: tab === key ? 500 : 400,
               background: 'none', border: 'none', cursor: 'pointer',
@@ -306,6 +307,7 @@ export default function CellarList() {
 
       {tab === 'ask' && <div style={{ padding: '12px 16px 0' }}><AskCellar wines={wines} bottles={bottles} /></div>}
       {tab === 'analytics' && <div style={{ padding: '12px 16px 0' }}><Analytics wines={wines} bottles={bottles} /></div>}
+      {tab === 'dining' && <div style={{ padding: '12px 16px 0' }}><Dining cellarWines={wines} /></div>}
       {tab === 'heroes' && <div style={{ padding: '12px 16px 0' }}><DrunkHeroes wines={wines} bottles={bottles} /></div>}
       {tab === 'want' && <div style={{ padding: '12px 16px 0' }}><WantList wines={wines} bottles={bottles} /></div>}
 
