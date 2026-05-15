@@ -20,19 +20,27 @@ export default function ScoreImport({ wines, onApply, onCancel }) {
     setPhase('scanning')
     const b64 = dataUrl.split(',')[1]
 
-    const prompt = `You are reading a wine review page screenshot. Extract every wine entry visible.
-For each wine return an object with:
-- producer: the winery name
-- wine_name: the wine/cuvée name (without producer, e.g. "Vineyard Cabernet Sauvignon" or "Cabernet Sauvignon")
-- vintage: the year as a number
-- type: "Red", "White", "Rosé", "Sparkling", "Orange", or "Fortified"
-- region: broad region (e.g. "Margaret River", "Burgundy")
-- score: the critic score as a string (e.g. "95", "95+", "94-96")
-- drink_from: start of drinking window as number (or null)
-- drink_to: end of drinking window as number (or null)
-- price: price if shown as number (or null)
+    const prompt = `You are reading a wine critic review or ratings page. This is NOT a purchase receipt.
+Extract every wine listed with its CRITIC SCORE and DRINKING WINDOW.
 
-Return ONLY a JSON array. No explanation, only JSON.`
+Return ONLY a JSON array where each item has EXACTLY these fields:
+[
+  {
+    "producer": "winery name",
+    "wine_name": "wine name without producer",
+    "vintage": 2020,
+    "score": "96+",
+    "drink_from": 2027,
+    "drink_to": 2043
+  }
+]
+
+Rules:
+- score: the rating as a string e.g. "95", "96+", "94-96"
+- drink_from and drink_to: extract from the drinking window column e.g. "2027 - 2043+" means drink_from=2027, drink_to=2043
+- If drink_to has a + sign, still use the number
+- vintage: the year as a number
+- Return ONLY the JSON array, no explanation, no markdown`
 
     try {
       const resp = await fetch('/api/claude', {
@@ -48,7 +56,9 @@ Return ONLY a JSON array. No explanation, only JSON.`
       })
       const data = await resp.json()
       const txt = data.content?.find(c => c.type === 'text')?.text || ''
-      const extracted = JSON.parse(txt.replace(/```json|```/g, '').trim())
+      const cleaned = txt.replace(/```json|```/g, '').trim()
+      const extracted = JSON.parse(cleaned)
+      if (!Array.isArray(extracted)) throw new Error('Not an array')
       matchToCellar(extracted)
     } catch(e) {
       setPhase('error')
