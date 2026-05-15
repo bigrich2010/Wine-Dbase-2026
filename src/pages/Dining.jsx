@@ -105,35 +105,38 @@ function DiningDetail({ entry, wines, foodItems, onClose, onEdit, onDelete }) {
 function DiningCard({ entry, wines, onClick }) {
   const wineCount = wines.length
   return (
-    <div className="card" style={{ padding: '14px 16px', cursor: 'pointer' }}
+    <div
       onClick={onClick}
-      onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-mid)'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '20px 1fr auto',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 14px',
+        cursor: 'pointer',
+        borderBottom: '1px solid var(--border)',
+        background: '#fff',
+        transition: 'background 0.12s',
+      }}
+      onMouseEnter={e => e.currentTarget.style.background = 'var(--cream-dark)'}
+      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 16 }}>{TYPE_ICON[entry.type]}</span>
-            <span style={{ fontSize: 16, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>{entry.venue || 'Unnamed'}</span>
-            {entry.suburb && <span style={{ fontSize: 12, color: 'var(--ink-light)' }}>{entry.suburb}</span>}
-            <Stars n={entry.rating} />
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--ink-light)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <span>📅 {new Date(entry.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            {entry.who_with && <span>👥 {entry.who_with}</span>}
-            {entry.occasion && entry.occasion !== 'Casual' && <span style={{ padding: '1px 7px', borderRadius: 20, background: 'var(--cream-dark)', fontSize: 11 }}>{entry.occasion}</span>}
-          </div>
-          {wineCount > 0 && (
-            <div style={{ fontSize: 12, color: 'var(--ink-light)', marginTop: 5 }}>
-              🍷 {wines.map(w => `${w.producer}${w.wine_name ? ' ' + w.wine_name : ''}${w.vintage ? ' ' + w.vintage : ''}`).join(', ')}
-            </div>
-          )}
+      <span style={{ fontSize: 15 }}>{TYPE_ICON[entry.type]}</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {entry.venue || 'Unnamed'}{entry.suburb ? `, ${entry.suburb}` : ''}
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, fontSize: 12 }}>
-          {entry.grand_total && <div style={{ fontWeight: 500 }}>${entry.grand_total}</div>}
-          {wineCount > 0 && <div style={{ color: 'var(--ink-light)' }}>{wineCount} wine{wineCount !== 1 ? 's' : ''}</div>}
-          <div style={{ color: 'var(--ink-light)', fontSize: 14, marginTop: 4 }}>›</div>
+        <div style={{ fontSize: 11, color: 'var(--ink-light)', display: 'flex', gap: 8, marginTop: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span>{new Date(entry.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          {entry.who_with && <span>{entry.who_with}</span>}
+          {wineCount > 0 && <span>🍷 {wineCount}</span>}
+          {entry.occasion && entry.occasion !== 'Casual' && <span style={{ padding: '1px 6px', borderRadius: 20, background: 'var(--cream-dark)', fontSize: 10 }}>{entry.occasion}</span>}
         </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <Stars n={entry.rating} />
+        {entry.grand_total && <span style={{ fontSize: 12, fontWeight: 500 }}>${entry.grand_total}</span>}
+        <span style={{ color: 'var(--ink-light)', fontSize: 12 }}>›</span>
       </div>
     </div>
   )
@@ -304,7 +307,7 @@ export default function Dining({ cellarWines }) {
           <p style={{ fontSize: 13 }}>Record your first meal, tasting or dinner at home.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           {filtered.map(e => (
             <DiningCard key={e.id} entry={e} wines={winesForEntry(e.id)}
               onClick={() => setSelected(e)} />
