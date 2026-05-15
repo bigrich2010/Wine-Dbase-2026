@@ -70,7 +70,17 @@ export default function QuickCapture({ onSave, onCancel }) {
   const handleFile = e => {
     const file = e.target.files[0]; if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => scanImage(ev.target.result)
+    reader.onload = ev => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        canvas.getContext('2d').drawImage(img, 0, 0)
+        scanImage(canvas.toDataURL('image/jpeg', 0.92))
+      }
+      img.src = ev.target.result
+    }
     reader.readAsDataURL(file)
   }
 
