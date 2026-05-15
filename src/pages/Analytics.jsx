@@ -43,7 +43,11 @@ export default function Analytics({ wines, bottles }) {
     })
 
     const topByScore = wines
-      .filter(w => w.score_winefront || w.score_ray_jordan || w.score_halliday || w.score_wine_advocate)
+  .filter(w => {
+    const hasScore = w.score_winefront || w.score_ray_jordan || w.score_halliday || w.score_wine_advocate
+    const hasBottles = inCellar.some(b => b.wine_id === w.id)
+    return hasScore && hasBottles
+  })
       .map(w => {
         const scores = [w.score_winefront, w.score_ray_jordan, w.score_halliday, w.score_wine_advocate]
           .filter(Boolean)
