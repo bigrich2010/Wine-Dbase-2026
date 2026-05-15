@@ -11,7 +11,19 @@ export default function BatchImport({ wines, onApply, onCancel }) {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => analyse(ev.target.result, file.type || 'image/jpeg')
+    reader.onload = ev => {
+      // Convert to JPEG via canvas to ensure compatibility
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        canvas.getContext('2d').drawImage(img, 0, 0)
+        const jpeg = canvas.toDataURL('image/jpeg', 0.92)
+        analyse(jpeg, 'image/jpeg')
+      }
+      img.src = ev.target.result
+    }
     reader.readAsDataURL(file)
   }
 
@@ -42,7 +54,7 @@ Return ONLY a JSON array. No explanation, only JSON.`
           model: 'claude-sonnet-4-5',
           max_tokens: 3000,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
