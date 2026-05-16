@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { formatPrice, effectiveDrinkingWindow } from '../lib/helpers'
 import { VINTAGE_CHARTS, REGION_MAP } from '../lib/vintageCharts'
 
@@ -179,35 +179,7 @@ export default function Analytics({ wines, bottles }) {
       </div>
 
       {stats.allScored.length > 0 && (
-        <Section title={`Scored wines (${stats.allScored.length})`}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {stats.allScored.map(function(item) {
-              var w = item.wine; var score = item.score; var inCellar = item.inCellar
-              return (
-                <div key={w.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {w.producer}{w.wine_name ? ' — ' + w.wine_name : ''} {w.vintage || ''}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-light)', marginTop: 1 }}>{w.region || ''}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--wine)' }}>{score}</div>
-                    <div style={{ fontSize: 10, color: 'var(--ink-light)' }}>
-                      {w.score_winefront ? 'WF' : w.score_ray_jordan ? 'RJ' : w.score_halliday ? 'H' : w.score_wine_advocate ? 'WA' : ''}
-                    </div>
-                  </div>
-                  <div style={{ flexShrink: 0 }}>
-                    {inCellar > 0
-                      ? <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>{inCellar} in cellar</span>
-                      : <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--cream-dark)', color: 'var(--ink-light)' }}>Not owned</span>
-                    }
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </Section>
+        <ScoredWines items={stats.allScored} />
       )}
 
       {stats.topByScore.length > 0 && (
@@ -288,6 +260,43 @@ export default function Analytics({ wines, bottles }) {
           ))}
         </div>
       </Section>
+    </div>
+  )
+}
+
+function ScoredWines({ items }) {
+  const [showAll, setShowAll] = React.useState(false)
+  const visible = showAll ? items : items.slice(0, 20)
+  return (
+    <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-light)', marginBottom: 10 }}>
+        Scored wines ({items.length})
+      </div>
+      {visible.map(function(item) {
+        var w = item.wine; var score = item.score; var inCellar = item.inCellar
+        var source = w.score_winefront ? 'WF' : w.score_ray_jordan ? 'RJ' : w.score_halliday ? 'H' : w.score_wine_advocate ? 'WA' : ''
+        return (
+          <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--wine)', flexShrink: 0, width: 34 }}>{score}</div>
+            <div style={{ fontSize: 10, color: 'var(--ink-light)', flexShrink: 0, width: 16 }}>{source}</div>
+            <div style={{ fontSize: 12, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {w.vintage ? w.vintage + ' ' : ''}{w.producer}{w.wine_name ? ' — ' + w.wine_name : ''}
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              {inCellar > 0
+                ? <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>{inCellar}✓</span>
+                : <span style={{ fontSize: 10, color: 'var(--border-strong)' }}>—</span>
+              }
+            </div>
+          </div>
+        )
+      })}
+      {items.length > 20 && (
+        <button onClick={function() { setShowAll(!showAll) }}
+          style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--ink-light)', textDecoration: 'underline', padding: 0 }}>
+          {showAll ? 'Show less' : 'Show all ' + items.length + ' wines'}
+        </button>
+      )}
     </div>
   )
 }
