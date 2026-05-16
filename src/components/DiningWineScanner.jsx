@@ -1,5 +1,5 @@
-import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 import { useState, useRef } from 'react'
+import { convertImageToPng, getBase64 } from '../lib/imageUtils'
 
 export default function DiningWineScanner({ onScanned, onCancel }) {
   const [phase, setPhase] = useState('idle')
@@ -7,20 +7,18 @@ export default function DiningWineScanner({ onScanned, onCancel }) {
   const fileRef = useRef(null)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
-  const [cameraOpen, setCameraOpen] = useState(false)
 
   const stopCamera = () => {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
-    setCameraOpen(false)
   }
 
   const startCamera = async () => {
-    setCameraOpen(true)
+    setPhase('camera')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       streamRef.current = stream
       setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream }, 100)
-    } catch(e) { setCameraOpen(false) }
+    } catch(e) { setPhase('error') }
   }
 
   const capture = () => {
@@ -29,30 +27,19 @@ export default function DiningWineScanner({ onScanned, onCancel }) {
     c.width = v.videoWidth; c.height = v.videoHeight
     c.getContext('2d').drawImage(v, 0, 0)
     stopCamera()
-    analyse(c.toDataURL('image/jpeg', 0.9))
+    analyse(c.toDataURL('image/png'), 'image/png')
   }
 
-  const handleFile = e => {
+  const handleFile = async e => {
     const file = e.target.files[0]; if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.width; canvas.height = img.height
-        canvas.getContext('2d').drawImage(img, 0, 0)
-        analyse(canvas.toDataURL('image/png'))
-      }
-      img.src = ev.target.result
-    }
-    reader.readAsDataURL(file)
+    const { dataUrl, mimeType } = await convertImageToPng(file)
+    analyse(dataUrl, mimeType)
   }
 
-  const analyse = async (dataUrl) => {
+  const analyse = async (dataUrl, mimeType = 'image/png') => {
     setPreview(dataUrl)
     setPhase('scanning')
     const b64 = getBase64(dataUrl)
-
     const prompt = `You are reading a photo of wine bottles or a wine list. Extract every wine visible.
 For each wine return:
 - producer: winery name
@@ -60,16 +47,14 @@ For each wine return:
 - vintage: year as number or null
 - type: "Red", "White", "Rosé", "Sparkling", "Orange", or "Fortified"
 - region: broad region if visible or null
-
 Return ONLY a JSON array. No explanation.`
-
     try {
       const resp = await fetch('/api/claude', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-           max_tokens: 1500,
+          max_tokens: 1500,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
@@ -77,10 +62,8 @@ Return ONLY a JSON array. No explanation.`
       const data = await resp.json()
       const txt = data.content?.find(c => c.type === 'text')?.text || ''
       const wines = JSON.parse(txt.replace(/```json|```/g, '').trim())
-      onScanned(wines, dataUrl)
-    } catch(e) {
-      setPhase('error')
-    }
+      onScanned(wines)
+    } catch(e) { setPhase('error') }
   }
 
   if (phase === 'idle') return (
@@ -99,12 +82,12 @@ Return ONLY a JSON array. No explanation.`
     </div>
   )
 
-  if (cameraOpen) return (
+  if (phase === 'camera') return (
     <div>
       <video ref={videoRef} autoPlay playsInline style={{ width: '100%', borderRadius: 6, marginBottom: 8, background: '#000', maxHeight: 280, objectFit: 'cover' }} />
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={capture}>📷 Capture</button>
-        <button className="btn btn-secondary" onClick={stopCamera}>Cancel</button>
+        <button className="btn btn-secondary" onClick={() => { stopCamera(); setPhase('idle') }}>Cancel</button>
       </div>
     </div>
   )
