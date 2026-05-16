@@ -14,6 +14,7 @@ import DrunkHeroes from './DrunkHeroes'
 import WantList from './WantList'
 import Dining from './Dining'
 import QuickCapture from '../components/QuickCapture'
+import { getOrCreateWine } from '../lib/wineUtils'
 import BatchImport from '../components/BatchImport'
 
 export default function CellarList() {
@@ -158,14 +159,13 @@ export default function CellarList() {
       let wineId = item.match?.id
 
       if (!wineId) {
-        const { data: newWine } = await supabase.from('wines').insert([{
+        wineId = await getOrCreateWine({
           producer: e.producer,
-          wine_name: e.wine_name || null,
-          vintage: e.vintage ? parseInt(e.vintage) : null,
+          wine_name: e.wine_name,
+          vintage: e.vintage,
           type: e.type || 'Red',
-          region: e.region || null,
-        }]).select().single()
-        wineId = newWine?.id
+          region: e.region,
+        })
       }
 
       if (wineId) {
@@ -187,17 +187,17 @@ export default function CellarList() {
 
   const saveQuickCapture = async (form) => {
     setSaving(true)
-    const { data: newWine } = await supabase.from('wines').insert([{
+    const wineId = await getOrCreateWine({
       producer: form.producer || 'Unknown',
-      wine_name: form.wine_name || null,
-      vintage: form.vintage ? parseInt(form.vintage) : null,
+      wine_name: form.wine_name,
+      vintage: form.vintage,
       type: form.type || 'Red',
-      region: form.region || null,
-    }]).select().single()
+      region: form.region,
+    })
 
-    if (newWine) {
+    if (wineId) {
       await supabase.from('bottles').insert([{
-        wine_id: newWine.id,
+        wine_id: wineId,
         status: form.where_type === 'Restaurant' ? 'Enjoyed at restaurant' : 'Consumed',
         consumed_date: form.date || new Date().toISOString().split('T')[0],
         restaurant_name: form.restaurant_name || null,
