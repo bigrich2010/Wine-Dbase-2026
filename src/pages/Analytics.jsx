@@ -181,28 +181,33 @@ export default function Analytics({ wines, bottles }) {
       {stats.allScored.length > 0 && (
         <Section title={`Scored wines (${stats.allScored.length})`}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {stats.allScored.map(({ wine: w, score, inCellar }) => (
-              <div key={w.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''} {w.vintage || ''}
+            {stats.allScored.map((item) => {
+              const w = item.wine
+              const score = item.score
+              const inCellar = item.inCellar
+              return (
+                <div key={w.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''} {w.vintage || ''}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-light)', marginTop: 1 }}>{w.region || ''}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-light)', marginTop: 1 }}>{w.region || ''}</div>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--wine)' }}>{score}</div>
-                  <div style={{ fontSize: 10, color: 'var(--ink-light)' }}>
-                    {w.score_winefront ? 'WF' : w.score_ray_jordan ? 'RJ' : w.score_halliday ? 'H' : w.score_wine_advocate ? 'WA' : ''}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--wine)' }}>{score}</div>
+                    <div style={{ fontSize: 10, color: 'var(--ink-light)' }}>
+                      {w.score_winefront ? 'WF' : w.score_ray_jordan ? 'RJ' : w.score_halliday ? 'H' : w.score_wine_advocate ? 'WA' : ''}
+                    </div>
+                  </div>
+                  <div style={{ flexShrink: 0 }}>
+                    {inCellar > 0
+                      ? <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>{inCellar} in cellar</span>
+                      : <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--cream-dark)', color: 'var(--ink-light)' }}>Not owned</span>
+                    }
                   </div>
                 </div>
-                <div style={{ flexShrink: 0 }}>
-                  {inCellar > 0
-                    ? <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>{inCellar} in cellar</span>
-                    : <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--cream-dark)', color: 'var(--ink-light)' }}>Not owned</span>
-                  }
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Section>
       )}
