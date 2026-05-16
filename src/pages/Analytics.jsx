@@ -43,6 +43,18 @@ export default function Analytics({ wines, bottles }) {
       drinkingCurve.holding += count
     })
 
+    const allScored = wines
+      .filter(w => w.score_winefront || w.score_ray_jordan || w.score_halliday || w.score_wine_advocate)
+      .map(w => {
+        const scores = [w.score_winefront, w.score_ray_jordan, w.score_halliday, w.score_wine_advocate]
+          .filter(Boolean).map(s => parseFloat(s)).filter(n => !isNaN(n))
+        const best = scores.length ? Math.max(...scores) : null
+        const inCellarCount = inCellar.filter(b => b.wine_id === w.id).reduce((s, b) => s + (parseInt(b.quantity) || 1), 0)
+        return { wine: w, score: best, inCellar: inCellarCount }
+      })
+      .filter(x => x.score)
+      .sort((a, b) => b.score - a.score)
+
     const topByScore = wines
       .filter(w => {
         const hasScore = w.score_winefront || w.score_ray_jordan || w.score_halliday || w.score_wine_advocate
@@ -165,6 +177,35 @@ export default function Analytics({ wines, bottles }) {
           {varietyEntries.length === 0 && <Empty />}
         </Section>
       </div>
+
+      {stats.allScored.length > 0 && (
+        <Section title={`Scored wines (${stats.allScored.length})`}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {stats.allScored.map(({ wine: w, score, inCellar }) => (
+              <div key={w.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''} {w.vintage || ''}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-light)', marginTop: 1 }}>{w.region || ''}</div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--wine)' }}>{score}</div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-light)' }}>
+                    {w.score_winefront ? 'WF' : w.score_ray_jordan ? 'RJ' : w.score_halliday ? 'H' : w.score_wine_advocate ? 'WA' : ''}
+                  </div>
+                </div>
+                <div style={{ flexShrink: 0 }}>
+                  {inCellar > 0
+                    ? <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--green-pale)', color: 'var(--green)' }}>{inCellar} in cellar</span>
+                    : <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'var(--cream-dark)', color: 'var(--ink-light)' }}>Not owned</span>
+                  }
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {stats.topByScore.length > 0 && (
         <Section title="Highest rated wines in cellar">
