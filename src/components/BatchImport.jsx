@@ -8,24 +8,11 @@ export default function BatchImport({ wines, onApply, onCancel }) {
   const [selected, setSelected] = useState({})
   const fileRef = useRef(null)
 
-  const handleFile = e => {
+  const handleFile = async e => {
     const file = e.target.files[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      // Convert to JPEG via canvas to ensure compatibility
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
-        canvas.getContext('2d').drawImage(img, 0, 0)
-        const jpeg = canvas.toDataURL('image/png')
-        analyse(jpeg, 'image/jpeg')
-      }
-      img.src = ev.target.result
-    }
-    reader.readAsDataURL(file)
+    const { dataUrl, mimeType } = await convertImageToPng(file)
+    analyse(dataUrl, mimeType)
   }
 
   const analyse = async (dataUrl, mimeType) => {
