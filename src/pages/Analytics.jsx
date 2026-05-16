@@ -101,7 +101,7 @@ export default function Analytics({ wines, bottles }) {
       totalValue, totalSpend,
       byRegion, byVariety,
       drinkingCurve, topByScore,
-      spendByYear, topConsumed,
+      spendByYear, topConsumed, allScored,
     }
   }, [wines, bottles])
 
@@ -181,15 +181,13 @@ export default function Analytics({ wines, bottles }) {
       {stats.allScored.length > 0 && (
         <Section title={`Scored wines (${stats.allScored.length})`}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {stats.allScored.map((item) => {
-              const w = item.wine
-              const score = item.score
-              const inCellar = item.inCellar
+            {stats.allScored.map(function(item) {
+              var w = item.wine; var score = item.score; var inCellar = item.inCellar
               return (
                 <div key={w.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''} {w.vintage || ''}
+                      {w.producer}{w.wine_name ? ' — ' + w.wine_name : ''} {w.vintage || ''}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--ink-light)', marginTop: 1 }}>{w.region || ''}</div>
                   </div>
@@ -214,17 +212,20 @@ export default function Analytics({ wines, bottles }) {
 
       {stats.topByScore.length > 0 && (
         <Section title="Highest rated wines in cellar">
-          {stats.topByScore.map(({ wine: w, score }) => (
-            <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''}
+          {stats.topByScore.map(function(item) {
+            var w = item.wine; var score = item.score
+            return (
+              <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {w.producer}{w.wine_name ? ' — ' + w.wine_name : ''}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-light)' }}>{w.vintage}{w.region ? ' · ' + w.region : ''}</div>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-light)' }}>{w.vintage}{w.region ? ` · ${w.region}` : ''}</div>
+                <div style={{ fontSize: 18, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, flexShrink: 0, marginLeft: 12 }}>{score}</div>
               </div>
-              <div style={{ fontSize: 18, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, flexShrink: 0, marginLeft: 12 }}>{score}</div>
-            </div>
-          )})}
+            )
+          })}
         </Section>
       )}
 
@@ -244,14 +245,17 @@ export default function Analytics({ wines, bottles }) {
 
       {stats.topConsumed.length > 0 && (
         <Section title="Most consumed">
-          {stats.topConsumed.map((x) => { const w = x.wine; return (
-            <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>
-                {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''}
+          {stats.topConsumed.map(function(x) {
+            var w = x.wine
+            return (
+              <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>
+                  {w.producer}{w.wine_name ? ' — ' + w.wine_name : ''}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-light)', flexShrink: 0, marginLeft: 12 }}>{x.count} bottle{x.count !== 1 ? 's' : ''}</div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--ink-light)', flexShrink: 0, marginLeft: 12 }}>{x.count} bottle{x.count !== 1 ? 's' : ''}</div>
-            </div>
-          ))}
+            )
+          })}
         </Section>
       )}
 
