@@ -70,12 +70,16 @@ export default function Analytics({ wines, bottles }) {
 
     const mostConsumed = {}
     consumed.forEach(b => {
-      mostConsumed[b.wine_id] = (mostConsumed[b.wine_id] || 0) + 1
+      const wine = wines.find(w => w.id === b.wine_id)
+      if (!wine) return
+      // Group by producer + wine_name to avoid duplicates from multiple bottle records
+      const key = `${wine.producer}||${wine.wine_name || ''}||${wine.vintage || ''}`
+      if (!mostConsumed[key]) mostConsumed[key] = { wine, count: 0 }
+      mostConsumed[key].count += 1
     })
-    const topConsumed = Object.entries(mostConsumed)
-      .sort((a, b) => b[1] - a[1])
+    const topConsumed = Object.values(mostConsumed)
+      .sort((a, b) => b.count - a.count)
       .slice(0, 5)
-      .map(([id, count]) => ({ wine: wines.find(w => w.id === id), count }))
       .filter(x => x.wine)
 
     return {
@@ -174,7 +178,7 @@ export default function Analytics({ wines, bottles }) {
               </div>
               <div style={{ fontSize: 18, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, flexShrink: 0, marginLeft: 12 }}>{score}</div>
             </div>
-          ))}
+          )})}
         </Section>
       )}
 
@@ -194,12 +198,12 @@ export default function Analytics({ wines, bottles }) {
 
       {stats.topConsumed.length > 0 && (
         <Section title="Most consumed">
-          {stats.topConsumed.map(({ wine: w, count }) => (
+          {stats.topConsumed.map((x) => { const w = x.wine; return (
             <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ fontSize: 13, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500 }}>
                 {w.producer}{w.wine_name ? ` — ${w.wine_name}` : ''}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--ink-light)', flexShrink: 0, marginLeft: 12 }}>{count} bottle{count !== 1 ? 's' : ''}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-light)', flexShrink: 0, marginLeft: 12 }}>{x.count} bottle{x.count !== 1 ? 's' : ''}</div>
             </div>
           ))}
         </Section>
