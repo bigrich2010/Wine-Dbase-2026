@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { getOrCreateWine } from '../lib/wineUtils'
 import Modal from '../components/Modal'
 import DiningWineScanner from '../components/DiningWineScanner'
 import ReceiptScanner from '../components/ReceiptScanner'
@@ -219,12 +220,10 @@ export default function Dining({ cellarWines }) {
         if (w.drunk_hero && w.producer) {
           let wineId = w.wine_id
           if (!wineId) {
-            const { data: nw } = await supabase.from('wines').insert([{
-              producer: w.producer, wine_name: w.wine_name || null,
-              vintage: w.vintage ? parseInt(w.vintage) : null,
-              type: w.type || 'Red', region: w.region || null,
-            }]).select().single()
-            wineId = nw?.id
+            wineId = await getOrCreateWine({
+              producer: w.producer, wine_name: w.wine_name,
+              vintage: w.vintage, type: w.type || 'Red', region: w.region,
+            })
           }
           if (wineId) {
             await supabase.from('bottles').insert([{
