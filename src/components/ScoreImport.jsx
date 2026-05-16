@@ -8,12 +8,11 @@ export default function ScoreImport({ wines, onApply, onCancel }) {
   const [selected, setSelected] = useState({})
   const fileRef = useRef(null)
 
-  const handleFile = e => {
+  const handleFile = async e => {
     const file = e.target.files[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => analyse(ev.target.result)
-    reader.readAsDataURL(file)
+    const { dataUrl, mimeType } = await convertImageToPng(file)
+    analyse(dataUrl, mimeType)
   }
 
   const analyse = async (dataUrl, mimeType = 'image/png') => {
