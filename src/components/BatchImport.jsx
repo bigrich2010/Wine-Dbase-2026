@@ -7,6 +7,7 @@ export default function BatchImport({ wines, onApply, onCancel }) {
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState({})
   const fileRef = useRef(null)
+  const cameraRef = useRef(null)
 
   const handleFile = async e => {
     const file = e.target.files[0]
@@ -109,8 +110,10 @@ Return ONLY a JSON array. No explanation, only JSON.`
         <p style={{ color: 'var(--ink-light)', fontSize: 13, marginBottom: 6 }}>Upload a receipt, invoice, or cellar list</p>
         <p style={{ color: 'var(--ink-light)', fontSize: 12 }}>Claude reads all wines, quantities and prices — matches existing entries and creates new ones with bottle records</p>
       </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-        <button className="btn btn-primary" onClick={() => fileRef.current.click()}>⬆ Upload document</button>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary btn-sm" onClick={() => cameraRef.current.click()}>📷 Take photo</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => fileRef.current.click()}>🖼 Upload file</button>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
         <input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFile} />
       </div>
       <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
