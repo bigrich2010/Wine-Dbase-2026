@@ -15,10 +15,23 @@ export default function DiningWineScanner({ onScanned, onCancel }) {
   const startCamera = async () => {
     setPhase('camera')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not available')
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: { ideal: 'environment' } } 
+      })
       streamRef.current = stream
-      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream }, 100)
-    } catch(e) { setPhase('error') }
+      setTimeout(() => { 
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play().catch(() => {})
+        }
+      }, 150)
+    } catch(e) { 
+      console.error('Camera error:', e)
+      setPhase('camerafail')
+    }
   }
 
   const capture = () => {
@@ -98,6 +111,18 @@ Return ONLY a JSON array. No explanation.`
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--ink-light)', fontSize: 13 }}>
         <div className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} /> Reading wines…
       </div>
+    </div>
+  )
+
+  if (phase === 'camerafail') return (
+    <div style={{ textAlign: 'center', padding: '1rem' }}>
+      <p style={{ color: 'var(--ink-mid)', fontSize: 13, marginBottom: 4 }}>Camera not available</p>
+      <p style={{ color: 'var(--ink-light)', fontSize: 12, marginBottom: 16 }}>Upload a photo from your camera roll instead</p>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+        <button className="btn btn-primary btn-sm" onClick={() => fileRef.current.click()}>⬆ Upload photo</button>
+        <button className="btn btn-ghost btn-sm" onClick={onCancel}>Add manually</button>
+      </div>
+      <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
     </div>
   )
 
