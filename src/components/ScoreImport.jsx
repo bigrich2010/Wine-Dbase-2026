@@ -7,6 +7,7 @@ export default function ScoreImport({ wines, onApply, onCancel }) {
   const [matches, setMatches] = useState([])
   const [selected, setSelected] = useState({})
   const fileRef = useRef(null)
+  const cameraRef = useRef(null)
 
   const handleFile = async e => {
     const file = e.target.files[0]
@@ -115,8 +116,10 @@ Rules:
         <p style={{ color: 'var(--ink-light)', fontSize: 13, marginBottom: 6 }}>Upload a screenshot of a Winefront or Ray Jordan producer page</p>
         <p style={{ color: 'var(--ink-light)', fontSize: 12 }}>Claude reads all wines — matches existing cellar entries and creates new ones</p>
       </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-        <button className="btn btn-primary" onClick={() => fileRef.current.click()}>⬆ Upload screenshot</button>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary btn-sm" onClick={() => cameraRef.current.click()}>📷 Take photo</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => fileRef.current.click()}>🖼 Upload screenshot</button>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFile} />
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
       </div>
       <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
