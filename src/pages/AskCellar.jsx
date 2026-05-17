@@ -26,35 +26,38 @@ export default function AskCellar({ wines, bottles }) {
     setMessages(prev => [...prev, { role: 'user', text: q }])
     setLoading(true)
 
-    const cellarData = wines.map(w => ({
-      producer: w.producer, wine: w.wine_name, vintage: w.vintage,
-      type: w.type, region: w.region, appellation: w.appellation,
-      grape: w.grape,
-      scores: [
-        w.score_winefront && `Winefront: ${w.score_winefront}`,
-        w.score_ray_jordan && `Ray Jordan: ${w.score_ray_jordan}`,
-        w.score_halliday && `Halliday: ${w.score_halliday}`,
-        w.score_wine_advocate && `Wine Advocate: ${w.score_wine_advocate}`,
-      ].filter(Boolean).join(', ') || null,
-      drink_from: w.drink_from, drink_to: w.drink_to,
-      bottles: bottles.filter(b => b.wine_id === w.id).map(b => ({
-        status: b.status,
-        purchased: b.purchase_date,
-        price: b.purchase_price,
-        source: b.purchase_source,
-        restaurant: b.restaurant_name,
-        tasting_note: b.tasting_note,
-        consumed: b.consumed_date,
-      }))
-    }))
+    // Compress cellar data - only include non-null fields to save tokens
+    const cellarData = wines.map(w => {
+      const wBottles = bottles.filter(b => b.wine_id === w.id)
+      const obj = {
+        p: w.producer,
+        w: w.wine_name || undefined,
+        v: w.vintage || undefined,
+        t: w.type,
+        r: w.region || undefined,
+        sc: [w.score_winefront, w.score_ray_jordan, w.score_halliday, w.score_wine_advocate].filter(Boolean)[0] || undefined,
+        df: w.drink_from || undefined,
+        dt: w.drink_to || undefined,
+        b: wBottles.map(b => ({
+          s: b.status,
+          q: b.quantity > 1 ? b.quantity : undefined,
+          pp: b.purchase_price || undefined,
+          src: b.purchase_source || undefined,
+          lot: b.auction_lot || undefined,
+          n: b.tasting_note || undefined,
+          cd: b.consumed_date || undefined,
+          r: b.restaurant_name || undefined,
+          rt: b.rating || undefined,
+        }))
+      }
+      // Remove undefined keys
+      return JSON.parse(JSON.stringify(obj))
+    })
 
     const sys = `You are a personal wine sommelier and cellar advisor with deep knowledge of fine wine.
-The user's cellar data:
-${JSON.stringify(cellarData, null, 2)}
-Current year: ${new Date().getFullYear()}.
-Be specific — reference actual wines by name. Keep responses concise but insightful.
-For drinking windows use drink_from/drink_to vs current year.
-Format with line breaks for readability.`
+User's cellar (compressed: p=producer, w=wine, v=vintage, t=type, r=region, sc=score, df/dt=drink from/to, b=bottles array where s=status, q=qty, pp=price, src=source, lot=auction lot, n=note, cd=consumed date, rt=rating):
+${JSON.stringify(cellarData)}
+Year: ${new Date().getFullYear()}. Be specific, reference actual wines by name. Keep responses concise but insightful. Format with line breaks.`
 
     const newHistory = [...history, { role: 'user', content: q }]
     setHistory(newHistory)
@@ -62,7 +65,7 @@ Format with line breaks for readability.`
     try {
       const resp = await fetch('/api/claude', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({  max_tokens: 800, system: sys, messages: newHistory })
+        body: JSON.stringify({  max_tokens: 1500, system: sys, messages: newHistory })
       })
       const data = await resp.json()
       const reply = data.content?.find(c => c.type === 'text')?.text || 'Sorry, could not generate a response.'
