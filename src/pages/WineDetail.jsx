@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { getVintageChart } from '../lib/vintageCharts'
 import { supabase } from '../lib/supabase'
 import { drinkingStatus, effectiveDrinkingWindow, formatPrice, BOTTLE_STATUSES } from '../lib/helpers'
-import Modal from '../components/Modal'
+import Modal, { ConfirmDialog } from '../components/Modal'
 import WineForm from '../components/WineForm'
 import BottleForm from '../components/BottleForm'
 import DrinkBottleForm from '../components/DrinkBottleForm'
@@ -12,6 +12,7 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
   const [editBottle, setEditBottle] = useState(null)
   const [saving, setSaving] = useState(false)
   const [drinkBottle, setDrinkBottle] = useState(null)
+  const [confirmAction, setConfirmAction] = useState(null)
 
   const dsResult = drinkingStatus(wine)
   const ds = dsResult?.status
@@ -27,7 +28,7 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
 
   const saveWine = async (form) => {
     setSaving(true)
-    await supabase.from('wines').update({
+    try { await supabase.from('wines').update({
       producer: form.producer, wine_name: form.wine_name,
       vintage: form.vintage ? parseInt(form.vintage) : null,
       type: form.type, region: form.region, appellation: form.appellation,
@@ -44,13 +45,14 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
       url_other: form.url_other || null,
       critic_notes: form.critic_notes || null,
     }).eq('id', wine.id)
-    setSaving(false)
     setModal(null)
     onRefresh()
+    } catch(e) { console.error('saveWine:', e) } finally { setSaving(false) }
   }
 
   const saveBottle = async (form) => {
     setSaving(true)
+    try {
     const payload = {
       wine_id: wine.id,
       status: form.status,
@@ -68,22 +70,23 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
     } else {
       await supabase.from('bottles').insert([payload])
     }
-    setSaving(false)
     setModal(null)
     setEditBottle(null)
     onRefresh()
+    } catch(e) { console.error('saveBottle:', e) } finally { setSaving(false) }
   }
 
   const quickRemoveBottle = async () => {
     setSaving(true)
-    await supabase.from('bottles').update({
-      status: 'Consumed',
-      consumed_date: new Date().toISOString().split('T')[0],
-    }).eq('id', drinkBottle.id)
-    setSaving(false)
-    setModal(null)
-    setDrinkBottle(null)
-    onRefresh()
+    try {
+      await supabase.from('bottles').update({
+        status: 'Consumed',
+        consumed_date: new Date().toISOString().split('T')[0],
+      }).eq('id', drinkBottle.id)
+      setModal(null)
+      setDrinkBottle(null)
+      onRefresh()
+    } catch(e) { console.error('quickRemove:', e) } finally { setSaving(false) }
   }
 
   const consumeBottle = async (form) => {
@@ -107,16 +110,30 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
     onRefresh()
   }
 
-  const deleteBottle = async (id) => {
-    if (!confirm('Delete this bottle record?')) return
-    await supabase.from('bottles').delete().eq('id', id)
-    onRefresh()
+  const deleteBottle = (id) => {
+    setConfirmAction({
+      message: 'Delete this bottle record? This cannot be undone.',
+      onConfirm: async () => {
+        setConfirmAction(null)
+        try {
+          await supabase.from('bottles').delete().eq('id', id)
+          onRefresh()
+        } catch(e) { console.error('deleteBottle:', e) }
+      }
+    })
   }
 
-  const deleteWine = async () => {
-    if (!confirm(`Delete ${wine.producer}${wine.wine_name ? ' ' + wine.wine_name : ''}${wine.vintage ? ' ' + wine.vintage : ''} and all its bottle records? This cannot be undone.`)) return
-    await supabase.from('wines').delete().eq('id', wine.id)
-    onBack()
+  const deleteWine = () => {
+    setConfirmAction({
+      message: `Delete ${wine.producer}${wine.wine_name ? ' — ' + wine.wine_name : ''}${wine.vintage ? ' ' + wine.vintage : ''} and ALL bottle records? This cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmAction(null)
+        try {
+          await supabase.from('wines').delete().eq('id', wine.id)
+          onBack()
+        } catch(e) { console.error('deleteWine:', e) }
+      }
+    })
   }
 
   const scores = [
@@ -290,6 +307,16 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
           {saving ? <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner" style={{ margin: '0 auto' }} /></div> : <BottleForm initial={editBottle || {}} onSave={saveBottle} onCancel={() => { setModal(null); setEditBottle(null) }} />}
         </Modal>
       )}
+      {confirmAction && (
+        <Modal title="Confirm" onClose={() => setConfirmAction(null)}>
+          <ConfirmDialog
+            message={confirmAction.message}
+            onConfirm={confirmAction.onConfirm}
+            onCancel={() => setConfirmAction(null)}
+          />
+        </Modal>
+      )}
+
       {modal === 'drinkBottle' && drinkBottle && (
         <Modal title="Drink a bottle" onClose={() => { setModal(null); setDrinkBottle(null) }}>
           {saving
