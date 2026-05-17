@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+
 export const WINE_TYPES = ['Red', 'White', 'Rosé', 'Sparkling', 'Orange', 'Fortified']
 
 export const BOTTLE_STATUSES = [
@@ -83,4 +85,13 @@ export function drinkingStatus(wine) {
 export function formatPrice(p) {
   if (!p) return null
   return '$' + parseFloat(p).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+export function useDebounce(value, delay = 200) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
 }
