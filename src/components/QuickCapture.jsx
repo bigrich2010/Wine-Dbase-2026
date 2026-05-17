@@ -12,81 +12,42 @@ function StarRating({ value, onChange }) {
           onClick={() => onChange(n === value ? 0 : n)}
           onMouseEnter={() => setHover(n)}
           onMouseLeave={() => setHover(0)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 36, lineHeight: 1, padding: '2px', color: n <= (hover || value) ? '#B8912A' : 'var(--border-strong)', transition: 'color 0.1s' }}
-        >★</button>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 36, lineHeight: 1, padding: '2px',
+            color: n <= (hover || value) ? '#B8912A' : 'var(--border-strong)', transition: 'color 0.1s' }}>★</button>
       ))}
     </div>
   )
 }
 
 export default function QuickCapture({ onSave, onCancel }) {
-  const [phase, setPhase] = useState('entry') // entry | camera | scanning
+  const [scanning, setScanning] = useState(false)
   const [preview, setPreview] = useState(null)
-  const fileRef = useRef(null)
-  const videoRef = useRef(null)
-  const streamRef = useRef(null)
-
   const [f, setF] = useState({
     producer: '', wine_name: '', vintage: '', type: 'Red', region: '',
     rating: 0, note: '', where_type: 'Restaurant', restaurant_name: '',
     shared_with: '', reorder: false, date: new Date().toISOString().split('T')[0],
   })
   const s = (k, v) => setF(p => ({ ...p, [k]: v }))
+  const cameraRef = useRef(null)
+  const galleryRef = useRef(null)
 
-  const stopCamera = () => {
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
-  }
-
-  const startCamera = () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('Camera not supported — please use Upload instead')
-      return
-    }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(stream => {
-        streamRef.current = stream
-        setPhase('camera')
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream
-            videoRef.current.play()
-          }
-        }, 100)
-      })
-      .catch(err => {
-        console.error('Camera error:', err)
-        alert('Could not access camera: ' + err.message + ' — please use Upload instead')
-      })
-  }
-
-  const capture = () => {
-    const v = videoRef.current; if (!v) return
-    const c = document.createElement('canvas')
-    c.width = v.videoWidth; c.height = v.videoHeight
-    c.getContext('2d').drawImage(v, 0, 0)
-    stopCamera()
-    scanImage(c.toDataURL('image/png'), 'image/png')
-  }
-
-  const handleFile = async e => {
-    const file = e.target.files[0]; if (!file) return
-    const { dataUrl, mimeType } = await convertImageToPng(file)
-    scanImage(dataUrl, mimeType)
-  }
-
-  const scanImage = async (dataUrl, mimeType = 'image/png') => {
-    setPreview(dataUrl)
-    setPhase('scanning')
-    const b64 = getBase64(dataUrl)
-    const prompt = `Extract wine label info. Return ONLY JSON:
-{"producer":"","wine_name":"","vintage":"","type":"Red|White|Rosé|Sparkling|Orange|Fortified","region":""}`
+  const handleFile = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+    setScanning(true)
     try {
+      const { dataUrl, mimeType } = await convertImageToPng(file)
+      setPreview(dataUrl)
+      const b64 = getBase64(dataUrl)
       const resp = await fetch('/api/claude', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ max_tokens: 200,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          max_tokens: 200,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64 } },
-            { type: 'text', text: prompt }
+            { type: 'text', text: 'Extract wine label info. Return ONLY JSON: {"producer":"","wine_name":"","vintage":"","type":"Red|White|Rosé|Sparkling|Orange|Fortified","region":""}' }
           ]}]
         })
       })
@@ -94,50 +55,52 @@ export default function QuickCapture({ onSave, onCancel }) {
       const txt = data.content?.find(c => c.type === 'text')?.text || ''
       const result = JSON.parse(txt.replace(/```json|```/g, '').trim())
       setF(p => ({ ...p, ...result }))
-    } catch(e) {}
-    setPhase('entry')
+    } catch(err) {
+      console.error('Scan error:', err)
+    }
+    setScanning(false)
   }
 
   const canSave = f.producer.trim() || f.wine_name.trim()
 
-  if (phase === 'camera') return (
-    <div>
-      <video ref={videoRef} autoPlay playsInline style={{ width: '100%', borderRadius: 6, marginBottom: 8, background: '#000', maxHeight: 260, objectFit: 'cover' }} />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={capture}>📷 Capture</button>
-        <button className="btn btn-secondary" onClick={() => { stopCamera(); setPhase('entry') }}>Cancel</button>
-      </div>
-    </div>
-  )
-
-  if (phase === 'scanning') return (
-    <div style={{ textAlign: 'center', padding: '1rem' }}>
-      {preview && <img src={preview} alt="" style={{ width: '100%', maxHeight: 120, objectFit: 'contain', borderRadius: 6, marginBottom: 8 }} />}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--ink-light)', fontSize: 13 }}>
-        <div className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} /> Reading label…
-      </div>
-    </div>
-  )
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontSize: 12, color: 'var(--ink-light)', textAlign: 'center', marginBottom: -4 }}>Capture a wine you've just tried</div>
+      <div style={{ fontSize: 12, color: 'var(--ink-light)', textAlign: 'center', marginBottom: -4 }}>
+        Capture a wine you've just tried
+      </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-        <button className="btn btn-secondary btn-sm" onClick={startCamera}>📷 Scan label</button>
-        <button className="btn btn-secondary btn-sm" onClick={() => fileRef.current.click()}>⬆ Photo</button>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+        <button className="btn btn-secondary btn-sm" onClick={() => cameraRef.current.click()}
+          disabled={scanning}>📷 Scan label</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => galleryRef.current.click()}
+          disabled={scanning}>🖼 From gallery</button>
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+          style={{ display: 'none' }} onChange={handleFile} />
+        <input ref={galleryRef} type="file" accept="image/*"
+          style={{ display: 'none' }} onChange={handleFile} />
       </div>
 
-      {preview && <img src={preview} alt="" style={{ width: '100%', maxHeight: 100, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)' }} />}
+      {scanning && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 12, color: 'var(--ink-light)' }}>
+          <div className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5 }} /> Reading label…
+        </div>
+      )}
+
+      {preview && !scanning && (
+        <img src={preview} alt="" style={{ width: '100%', maxHeight: 100, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border)' }} />
+      )}
 
       <div className="form-row">
-        <div className="form-field"><label>Producer</label><input value={f.producer} onChange={e => s('producer', e.target.value)} placeholder="e.g. Giacomo Conterno" /></div>
-        <div className="form-field"><label>Wine</label><input value={f.wine_name} onChange={e => s('wine_name', e.target.value)} placeholder="e.g. Barolo" /></div>
+        <div className="form-field"><label>Producer</label>
+          <input value={f.producer} onChange={e => s('producer', e.target.value)} placeholder="e.g. Moss Wood" /></div>
+        <div className="form-field"><label>Wine</label>
+          <input value={f.wine_name} onChange={e => s('wine_name', e.target.value)} placeholder="e.g. Cabernet Sauvignon" /></div>
       </div>
       <div className="form-row">
-        <div className="form-field"><label>Vintage</label><input type="number" value={f.vintage} onChange={e => s('vintage', e.target.value)} placeholder="2019" /></div>
-        <div className="form-field"><label>Region</label><input value={f.region} onChange={e => s('region', e.target.value)} placeholder="e.g. Barolo" /></div>
+        <div className="form-field"><label>Vintage</label>
+          <input type="number" value={f.vintage} onChange={e => s('vintage', e.target.value)} placeholder="2019" /></div>
+        <div className="form-field"><label>Region</label>
+          <input value={f.region} onChange={e => s('region', e.target.value)} placeholder="e.g. Margaret River" /></div>
       </div>
       <div className="form-row">
         <div className="form-field"><label>Where</label>
@@ -146,27 +109,38 @@ export default function QuickCapture({ onSave, onCancel }) {
           </select>
         </div>
         <div className="form-field"><label>{f.where_type === 'Restaurant' ? 'Restaurant' : 'Venue'}</label>
-          <input value={f.restaurant_name} onChange={e => s('restaurant_name', e.target.value)} placeholder="optional" />
-        </div>
+          <input value={f.restaurant_name} onChange={e => s('restaurant_name', e.target.value)} placeholder="optional" /></div>
       </div>
       <div className="form-row full">
-        <div className="form-field"><label>With</label><input value={f.shared_with} onChange={e => s('shared_with', e.target.value)} placeholder="Who were you with?" /></div>
+        <div className="form-field"><label>With</label>
+          <input value={f.shared_with} onChange={e => s('shared_with', e.target.value)} placeholder="Who were you with?" /></div>
       </div>
-      <div className="form-field"><label>Rating</label><StarRating value={f.rating} onChange={v => s('rating', v)} /></div>
+      <div className="form-field"><label>Rating</label>
+        <StarRating value={f.rating} onChange={v => s('rating', v)} /></div>
       <div className="form-row full">
-        <div className="form-field"><label>Note</label><textarea value={f.note} onChange={e => s('note', e.target.value)} placeholder="Quick impression…" rows={2} /></div>
+        <div className="form-field"><label>Note</label>
+          <textarea value={f.note} onChange={e => s('note', e.target.value)} placeholder="Quick impression…" rows={2} /></div>
       </div>
-      <div onClick={() => s('reorder', !f.reorder)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 8, border: `2px solid ${f.reorder ? 'var(--wine)' : 'var(--border-mid)'}`, background: f.reorder ? 'var(--wine-pale)' : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
+
+      <div onClick={() => s('reorder', !f.reorder)} style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 8,
+        border: `2px solid ${f.reorder ? 'var(--wine)' : 'var(--border-mid)'}`,
+        background: f.reorder ? 'var(--wine-pale)' : '#fff', cursor: 'pointer', transition: 'all 0.15s',
+      }}>
         <span style={{ fontSize: 20 }}>🔁</span>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: f.reorder ? 'var(--wine)' : 'var(--ink)' }}>{f.reorder ? 'On the want list!' : 'Get some of this'}</div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: f.reorder ? 'var(--wine)' : 'var(--ink)' }}>
+            {f.reorder ? 'On the want list!' : 'Get some of this'}</div>
           <div style={{ fontSize: 11, color: 'var(--ink-light)' }}>Add to your Want List</div>
         </div>
-        <div style={{ marginLeft: 'auto', fontSize: 18, color: f.reorder ? 'var(--wine)' : 'var(--border-strong)' }}>{f.reorder ? '✓' : '+'}</div>
+        <div style={{ marginLeft: 'auto', fontSize: 18, color: f.reorder ? 'var(--wine)' : 'var(--border-strong)' }}>
+          {f.reorder ? '✓' : '+'}</div>
       </div>
+
       <div className="modal-footer">
         <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-        <button className="btn btn-primary" disabled={!canSave} onClick={() => onSave(f)} style={{ opacity: canSave ? 1 : 0.4 }}>Save capture</button>
+        <button className="btn btn-primary" disabled={!canSave} onClick={() => onSave(f)}
+          style={{ opacity: canSave ? 1 : 0.4 }}>Save capture</button>
       </div>
     </div>
   )
