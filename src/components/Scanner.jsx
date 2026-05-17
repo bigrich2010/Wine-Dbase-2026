@@ -13,13 +13,26 @@ export default function Scanner({ onScanned, onCancel }) {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
   }
 
-  const startCamera = async () => {
-    setPhase('camera')
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      streamRef.current = stream
-      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream }, 100)
-    } catch(e) { setPhase('error') }
+  const startCamera = () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Camera not supported — please use Upload instead')
+      return
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        streamRef.current = stream
+        setPhase('camera')
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+            videoRef.current.play()
+          }
+        }, 100)
+      })
+      .catch(err => {
+        console.error('Camera error:', err)
+        alert('Could not access camera: ' + err.message + ' — please use Upload instead')
+      })
   }
 
   const capture = () => {
