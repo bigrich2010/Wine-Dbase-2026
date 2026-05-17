@@ -12,26 +12,26 @@ export default function DiningWineScanner({ onScanned, onCancel }) {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
   }
 
-  const startCamera = async () => {
-    setPhase('camera')
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera not available')
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: { ideal: 'environment' } } 
-      })
-      streamRef.current = stream
-      setTimeout(() => { 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.play().catch(() => {})
-        }
-      }, 150)
-    } catch(e) { 
-      console.error('Camera error:', e)
-      setPhase('camerafail')
+  const startCamera = () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Camera not supported — please use Upload instead')
+      return
     }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        streamRef.current = stream
+        setPhase('camera')
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+            videoRef.current.play()
+          }
+        }, 100)
+      })
+      .catch(err => {
+        console.error('Camera error:', err)
+        alert('Could not access camera: ' + err.message + ' — please use Upload instead')
+      })
   }
 
   const capture = () => {
