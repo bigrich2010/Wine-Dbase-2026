@@ -348,7 +348,7 @@ export default function Dining({ cellarWines }) {
               🧾 Scan receipt — fills restaurant, date, food & wines
             </button>
             <button className="btn btn-secondary" style={{ justifyContent: 'center', padding: 14, fontSize: 14 }}
-              onClick={() => setModal('choose')}>
+              onClick={() => setModal('scanWines')}>
               📸 Photo of wine bottles — fills wine list
             </button>
             <button className="btn btn-ghost" style={{ justifyContent: 'center' }}
