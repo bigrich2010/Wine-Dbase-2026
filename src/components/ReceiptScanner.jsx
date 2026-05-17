@@ -15,10 +15,24 @@ export default function ReceiptScanner({ onScanned, onSkip }) {
   const startCamera = async () => {
     setPhase('camera')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not available')
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: { ideal: 'environment' } }
+      })
       streamRef.current = stream
-      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream }, 100)
-    } catch(e) { setPhase('idle') }
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play().catch(() => {})
+        }
+      }, 150)
+    } catch(e) {
+      console.error('Camera error:', e)
+      setPhase('idle')
+      alert('Camera not available — please use the Upload button instead')
+    }
   }
 
   const capture = () => {
