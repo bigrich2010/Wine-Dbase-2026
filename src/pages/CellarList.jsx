@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { groupByVariety } from '../lib/helpers'
+import { groupByVariety, useDebounce, effectiveDrinkingWindow } from '../lib/helpers'
 import WineRow from '../components/WineRow'
 import WineDetail from './WineDetail'
 import Modal from '../components/Modal'
@@ -28,18 +28,28 @@ export default function CellarList() {
   const [pendingWineId, setPendingWineId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 200)
   const [filterType, setFilterType] = useState('')
   const [filterReady, setFilterReady] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [{ data: w }, { data: b }] = await Promise.all([
-      supabase.from('wines').select('*').order('producer'),
-      supabase.from('bottles').select('*').order('created_at'),
-    ])
-    setWines(w || [])
-    setBottles(b || [])
-    setLoading(false)
+    try {
+      const [{ data: w, error: we }, { data: b, error: be }] = await Promise.all([
+        supabase.from('wines').select('*').order('producer'),
+        supabase.from('bottles').select('*').order('created_at'),
+      ])
+      if (we) console.error('Wines fetch error:', we)
+      if (be) console.error('Bottles fetch error:', be)
+      setWines(w || [])
+      setBottles(b || [])
+    } catch(e) {
+      console.error('fetchAll error:', e)
+      setWines([])
+      setBottles([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -48,11 +58,12 @@ export default function CellarList() {
 
   const filteredWines = wines.filter(w => {
     const txt = `${w.producer} ${w.wine_name} ${w.region} ${w.appellation} ${w.grape}`.toLowerCase()
-    const matchSearch = !search || txt.includes(search.toLowerCase())
+    const matchSearch = !debouncedSearch || txt.includes(debouncedSearch.toLowerCase())
     const matchType = !filterType || w.type === filterType
     const matchReady = !filterReady || (() => {
       const year = new Date().getFullYear()
-      return w.drink_from && w.drink_to && year >= w.drink_from && year <= w.drink_to
+      const win = effectiveDrinkingWindow(w)
+      return win && year >= win.from && year <= win.to
     })()
     const hasBottles = bottlesForWine(w.id).some(b => b.status === 'In cellar' || b.status === 'Pending arrival')
     return matchSearch && matchType && matchReady && hasBottles
@@ -60,14 +71,22 @@ export default function CellarList() {
 
   const grouped = groupByVariety(filteredWines)
 
-  const totalInCellar = bottles.filter(b => b.status === 'In cellar').length
-  const totalPending = bottles.filter(b => b.status === 'Pending arrival').length
-  const totalConsumed = bottles.filter(b => ['Consumed', 'Enjoyed at restaurant'].includes(b.status)).length
-  const year = new Date().getFullYear()
-  const readyNow = wines.filter(w =>
-    w.drink_from && w.drink_to && year >= w.drink_from && year <= w.drink_to &&
-    bottlesForWine(w.id).some(b => b.status === 'In cellar')
-  ).length
+  const cellarStats = useMemo(() => {
+    const year = new Date().getFullYear()
+    const inCellar = bottles.filter(b => b.status === 'In cellar')
+    return {
+      totalInCellar: inCellar.reduce((s,b) => s + (parseInt(b.quantity)||1), 0),
+      totalPending: bottles.filter(b => b.status === 'Pending arrival').length,
+      totalConsumed: bottles.filter(b => ['Consumed', 'Enjoyed at restaurant'].includes(b.status)).length,
+      readyNow: wines.filter(w => {
+        const hasBottle = inCellar.some(b => b.wine_id === w.id)
+        if (!hasBottle) return false
+        const from = w.drink_from, to = w.drink_to
+        return from && to && year >= from && year <= to
+      }).length,
+    }
+  }, [wines, bottles])
+  const { totalInCellar, totalPending, totalConsumed, readyNow } = cellarStats
 
   const handleScanned = (data) => {
     setScannedData(data || {})
@@ -76,8 +95,9 @@ export default function CellarList() {
 
   const saveNewWine = async (form) => {
     setSaving(true)
-    const { data: newWine } = await supabase.from('wines').insert([{
-      producer: form.producer, wine_name: form.wine_name || null,
+    try {
+    const { data: newWine, error } = await supabase.from('wines').insert([{
+      producer: (form.producer || '').trim(), wine_name: (form.wine_name || '').trim() || null,
       vintage: form.vintage ? parseInt(form.vintage) : null,
       type: form.type, region: form.region || null, appellation: form.appellation || null,
       country: form.country || null, grape: form.grape || null, alcohol: form.alcohol || null,
@@ -93,7 +113,7 @@ export default function CellarList() {
       url_other: form.url_other || null,
       critic_notes: form.critic_notes || null,
     }]).select().single()
-    setSaving(false)
+    if (error) throw error
     if (newWine) {
       setPendingWineId(newWine.id)
       setModal('addBottle')
@@ -101,10 +121,13 @@ export default function CellarList() {
       setModal(null)
     }
     setScannedData(null)
+    } catch(e) { console.error('saveNewWine:', e); alert('Failed to save wine. Please try again.') }
+    finally { setSaving(false) }
   }
 
   const saveNewBottle = async (form) => {
     setSaving(true)
+    try {
     await supabase.from('bottles').insert([{
       wine_id: pendingWineId,
       status: form.status,
@@ -117,10 +140,11 @@ export default function CellarList() {
       restaurant_name: form.restaurant_name || null,
       tasting_note: form.tasting_note || null,
     }])
-    setSaving(false)
     setPendingWineId(null)
     setModal(null)
     fetchAll()
+    } catch(e) { console.error('saveNewBottle:', e); alert('Failed to save bottle. Please try again.') }
+    finally { setSaving(false) }
   }
 
   const applyScoreImport = async ({ toUpdate, toCreate }) => {
