@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useDebounce } from '../lib/helpers'
 import { getOrCreateWine } from '../lib/wineUtils'
-import Modal from '../components/Modal'
+import Modal, { ConfirmDialog } from '../components/Modal'
 import DiningWineScanner from '../components/DiningWineScanner'
 import ReceiptScanner from '../components/ReceiptScanner'
 import DiningForm from '../components/DiningForm'
@@ -99,6 +100,15 @@ function DiningDetail({ entry, wines, foodItems, onClose, onEdit, onDelete }) {
         <button className="btn btn-secondary btn-sm" onClick={onDelete} style={{ color: '#A32D2D', borderColor: '#F09595' }}>Delete</button>
         <button className="btn btn-primary btn-sm" onClick={onEdit}>Edit entry</button>
       </div>
+      {confirmAction && (
+        <Modal title="Confirm" onClose={() => setConfirmAction(null)}>
+          <ConfirmDialog
+            message={confirmAction.message}
+            onConfirm={confirmAction.onConfirm}
+            onCancel={() => setConfirmAction(null)}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -153,21 +163,31 @@ export default function Dining({ cellarWines }) {
   const [scannedReceipt, setScannedReceipt] = useState(null)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 200)
   const [filterType, setFilterType] = useState('')
   const [selected, setSelected] = useState(null)
+  const [confirmAction, setConfirmAction] = useState(null)
   const [editEntry, setEditEntry] = useState(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [{ data: e }, { data: w }, { data: f }] = await Promise.all([
-      supabase.from('dining').select('*').order('date', { ascending: false }),
-      supabase.from('dining_wines').select('*'),
-      supabase.from('dining_food').select('*'),
-    ])
-    setEntries(e || [])
-    setDiningWines(w || [])
-    setFoodItems(f || [])
-    setLoading(false)
+    try {
+      const [{ data: e }, { data: w }, { data: f }] = await Promise.all([
+        supabase.from('dining').select('*').order('date', { ascending: false }),
+        supabase.from('dining_wines').select('*'),
+        supabase.from('dining_food').select('*'),
+      ])
+      setEntries(e || [])
+      setDiningWines(w || [])
+      setFoodItems(f || [])
+    } catch(e) {
+      console.error('Dining fetchAll error:', e)
+      setEntries([])
+      setDiningWines([])
+      setFoodItems([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
@@ -238,13 +258,11 @@ export default function Dining({ cellarWines }) {
         }
       }
 
-      for (const f of (food || [])) {
-        if (!f.dish) continue
-        await supabase.from('dining_food').insert([{
-          dining_id: entryId, course: f.course || null,
-          dish: f.dish, price: f.price ? parseFloat(f.price) : null,
-        }])
-      }
+      const foodRows = (food || []).filter(f => f.dish).map(f => ({
+        dining_id: entryId, course: f.course || null,
+        dish: f.dish, price: f.price ? parseFloat(f.price) : null,
+      }))
+      if (foodRows.length) await supabase.from('dining_food').insert(foodRows)
     }
 
     setSaving(false)
@@ -256,16 +274,23 @@ export default function Dining({ cellarWines }) {
     fetchAll()
   }
 
-  const deleteEntry = async (id) => {
-    if (!confirm('Delete this dining entry?')) return
-    await supabase.from('dining').delete().eq('id', id)
-    setSelected(null)
-    fetchAll()
+  const deleteEntry = (id) => {
+    setConfirmAction({
+      message: 'Delete this dining entry and all its wines and food items?',
+      onConfirm: async () => {
+        setConfirmAction(null)
+        try {
+          await supabase.from('dining').delete().eq('id', id)
+          setSelected(null)
+          fetchAll()
+        } catch(e) { console.error('deleteEntry:', e) }
+      }
+    })
   }
 
   const filtered = entries.filter(e => {
     const txt = `${e.venue} ${e.suburb} ${e.who_with} ${e.general_notes} ${e.food_notes}`.toLowerCase()
-    return (!search || txt.includes(search.toLowerCase())) && (!filterType || e.type === filterType)
+    return (!debouncedSearch || txt.includes(debouncedSearch.toLowerCase())) && (!filterType || e.type === filterType)
   })
 
   const totalSpend = entries.reduce((s, e) => s + (parseFloat(e.grand_total) || 0), 0)
