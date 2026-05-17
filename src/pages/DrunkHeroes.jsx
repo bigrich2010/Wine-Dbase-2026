@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useDebounce } from '../lib/helpers'
 
 function Stars({ n }) {
   if (!n) return <span style={{ fontSize: 12, color: 'var(--ink-light)' }}>Unrated</span>
@@ -11,6 +12,7 @@ function Stars({ n }) {
 
 export default function DrunkHeroes({ wines, bottles }) {
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 200)
   const [filterRating, setFilterRating] = useState(0)
   const [sortBy, setSortBy] = useState('date')
 
@@ -26,7 +28,7 @@ export default function DrunkHeroes({ wines, bottles }) {
 
   const filtered = consumed.filter(({ bottle: b, wine: w }) => {
     const txt = `${w.producer} ${w.wine_name} ${w.region} ${b.restaurant_name} ${b.shared_with} ${b.tasting_note}`.toLowerCase()
-    const matchSearch = !search || txt.includes(search.toLowerCase())
+    const matchSearch = !debouncedSearch || txt.includes(debouncedSearch.toLowerCase())
     const matchRating = !filterRating || b.rating === filterRating
     return matchSearch && matchRating
   })
