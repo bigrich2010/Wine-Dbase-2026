@@ -6,13 +6,13 @@ import { supabase } from './supabase'
  */
 export async function findExistingWine(producer, wine_name, vintage) {
   if (!producer) return null
+  try {
+    const { data, error } = await supabase
+      .from('wines')
+      .select('id, producer, wine_name, vintage')
+      .ilike('producer', `%${producer.trim()}%`)
 
-  const { data } = await supabase
-    .from('wines')
-    .select('id, producer, wine_name, vintage')
-    .ilike('producer', `%${producer.trim()}%`)
-
-  if (!data || !data.length) return null
+    if (error || !data || !data.length) return null
 
   // Find best match
   const match = data.find(w => {
@@ -30,7 +30,11 @@ export async function findExistingWine(producer, wine_name, vintage) {
     return producerMatch && nameMatch && vintageMatch
   })
 
-  return match?.id || null
+    return match?.id || null
+  } catch(e) {
+    console.error('findExistingWine error:', e)
+    return null
+  }
 }
 
 /**
@@ -38,15 +42,16 @@ export async function findExistingWine(producer, wine_name, vintage) {
  * Returns the wine id — existing if found, newly created if not.
  */
 export async function getOrCreateWine(wineData) {
-  const existing = await findExistingWine(
-    wineData.producer,
-    wineData.wine_name,
-    wineData.vintage
-  )
+  try {
+    const existing = await findExistingWine(
+      wineData.producer,
+      wineData.wine_name,
+      wineData.vintage
+    )
 
-  if (existing) return existing
+    if (existing) return existing
 
-  const { data } = await supabase.from('wines').insert([{
+    const { data, error } = await supabase.from('wines').insert([{
     producer: wineData.producer,
     wine_name: wineData.wine_name || null,
     vintage: wineData.vintage ? parseInt(wineData.vintage) : null,
@@ -57,5 +62,10 @@ export async function getOrCreateWine(wineData) {
     grape: wineData.grape || null,
   }]).select().single()
 
-  return data?.id || null
+    if (error) throw error
+    return data?.id || null
+  } catch(e) {
+    console.error('getOrCreateWine error:', e)
+    return null
+  }
 }
