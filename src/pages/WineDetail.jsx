@@ -64,6 +64,13 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
       consumed_date: form.consumed_date || null,
       restaurant_name: form.restaurant_name || null,
       tasting_note: form.tasting_note || null,
+      rating: form.rating || null,
+      shared_with: form.shared_with || null,
+      decanted: form.decanted || false,
+      decanted_mins: form.decanted_mins ? parseInt(form.decanted_mins) : null,
+      reorder: form.reorder || false,
+      drunk_hero: form.drunk_hero || false,
+      where_type: form.where_type || null,
     }
     if (editBottle) {
       await supabase.from('bottles').update(payload).eq('id', editBottle.id)
@@ -91,23 +98,28 @@ export default function WineDetail({ wine, bottles, onBack, onRefresh }) {
 
   const consumeBottle = async (form) => {
     setSaving(true)
-    await supabase.from('bottles').update({
-      status: form.where_type === 'Restaurant' ? 'Enjoyed at restaurant' : 'Consumed',
-      consumed_date: form.consumed_date || null,
-      restaurant_name: form.restaurant_name || null,
-      shared_with: form.shared_with || null,
-      rating: form.rating || null,
-      tasting_note: form.tasting_note || null,
-      decanted: form.decanted || false,
-      decanted_mins: form.decanted_mins ? parseInt(form.decanted_mins) : null,
-      where_type: form.where_type || null,
-      reorder: form.reorder || false,
-      drunk_hero: true,
-    }).eq('id', drinkBottle.id)
-    setSaving(false)
-    setModal(null)
-    setDrinkBottle(null)
-    onRefresh()
+    try {
+      await supabase.from('bottles').update({
+        status: form.where_type === 'Restaurant' ? 'Enjoyed at restaurant' : 'Consumed',
+        consumed_date: form.consumed_date || null,
+        restaurant_name: form.restaurant_name || null,
+        shared_with: form.shared_with || null,
+        rating: form.rating || null,
+        tasting_note: form.tasting_note || null,
+        decanted: form.decanted || false,
+        decanted_mins: form.decanted_mins ? parseInt(form.decanted_mins) : null,
+        where_type: form.where_type || null,
+        reorder: form.reorder || false,
+        drunk_hero: true,
+      }).eq('id', drinkBottle.id)
+      setModal(null)
+      setDrinkBottle(null)
+      onRefresh()
+    } catch(e) {
+      console.error('consumeBottle:', e)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const deleteBottle = (id) => {
