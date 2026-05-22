@@ -10,11 +10,12 @@ import DiningForm from '../components/DiningForm'
 const TYPE_ICON = { Restaurant: '🍽', Home: '🏠', Event: '🍷' }
 
 function Stars({ n, size = 13 }) {
-  if (!n) return null
+  if (!n || isNaN(n)) return null
   return <span style={{ color: '#B8912A', fontSize: size }}>{'★'.repeat(n)}</span>
 }
 
-function DiningDetail({ entry, wines, foodItems, onClose, onEdit, onDelete }) {
+function DiningDetail({ entry, wines = [], foodItems = [], onClose, onEdit, onDelete }) {
+  if (!entry) return null
   return (
     <div style={{ paddingBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -100,15 +101,6 @@ function DiningDetail({ entry, wines, foodItems, onClose, onEdit, onDelete }) {
         <button className="btn btn-secondary btn-sm" onClick={onDelete} style={{ color: '#A32D2D', borderColor: '#F09595' }}>Delete</button>
         <button className="btn btn-primary btn-sm" onClick={onEdit}>Edit entry</button>
       </div>
-      {confirmAction && (
-        <Modal title="Confirm" onClose={() => setConfirmAction(null)}>
-          <ConfirmDialog
-            message={confirmAction.message}
-            onConfirm={confirmAction.onConfirm}
-            onCancel={() => setConfirmAction(null)}
-          />
-        </Modal>
-      )}
     </div>
   )
 }
@@ -226,8 +218,9 @@ export default function Dining({ cellarWines }) {
     }
 
     if (entryId) {
-      for (const w of wines) {
-        await supabase.from('dining_wines').insert([{
+      // Batch insert all wines at once
+      if (wines.length > 0) {
+        const wineRows = wines.map(w => ({
           dining_id: entryId, wine_id: w.wine_id || null,
           producer: w.producer || null, wine_name: w.wine_name || null,
           vintage: w.vintage ? parseInt(w.vintage) : null,
@@ -236,7 +229,12 @@ export default function Dining({ cellarWines }) {
           price: w.price ? parseFloat(w.price) : null,
           rating: w.rating || null, tasting_note: w.tasting_note || null,
           drunk_hero: w.drunk_hero || false, reorder: w.reorder || false,
-        }])
+        }))
+        await supabase.from('dining_wines').insert(wineRows)
+      }
+
+      // Handle Drunk Heroes and reorder flags
+      for (const w of wines) {
         if (w.drunk_hero && w.producer) {
           let wineId = w.wine_id
           if (!wineId) {
@@ -402,8 +400,8 @@ export default function Dining({ cellarWines }) {
         <Modal title="Dining entry" onClose={() => setSelected(null)} wide>
           <DiningDetail
             entry={selected}
-            wines={winesForEntry(selected.id)}
-            foodItems={foodForEntry(selected.id)}
+            wines={winesForEntry(selected?.id) || []}
+            foodItems={foodForEntry(selected?.id) || []}
             onClose={() => setSelected(null)}
             onEdit={() => { setEditEntry(selected); setModal('form'); setSelected(null) }}
             onDelete={() => deleteEntry(selected.id)}
