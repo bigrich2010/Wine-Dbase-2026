@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { formatPrice, effectiveDrinkingWindow } from '../lib/helpers'
-import { VINTAGE_CHARTS, REGION_MAP } from '../lib/vintageCharts'
+import { VINTAGE_CHARTS } from '../lib/vintageCharts'
 
 export default function Analytics({ wines, bottles }) {
   const year = new Date().getFullYear()
