@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 const QUICK = [
   "What's ready to drink right now?",
@@ -12,6 +13,7 @@ const QUICK = [
 ]
 
 export default function AskCellar({ wines, bottles }) {
+  const [diningEntries, setDiningEntries] = useState([])
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,6 +21,12 @@ export default function AskCellar({ wines, bottles }) {
   const bottomRef = useRef(null)
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  useEffect(() => {
+    supabase.from('dining').select('*, dining_wines(*)').order('date', { ascending: false }).limit(50)
+      .then(({ data }) => setDiningEntries(data || []))
+      .catch(() => {})
+  }, [])
 
   const send = async (q) => {
     if (!q.trim() || loading) return
@@ -57,7 +65,9 @@ export default function AskCellar({ wines, bottles }) {
     const sys = `You are a personal wine sommelier and cellar advisor with deep knowledge of fine wine.
 User's cellar (compressed: p=producer, w=wine, v=vintage, t=type, r=region, sc=score, df/dt=drink from/to, b=bottles array where s=status, q=qty, pp=price, src=source, lot=auction lot, n=note, cd=consumed date, rt=rating):
 ${JSON.stringify(cellarData)}
-Year: ${new Date().getFullYear()}. Be specific, reference actual wines by name. Keep responses concise but insightful. Format with line breaks.`
+Recent dining history (last 20):
+${JSON.stringify(diningContext)}
+Year: ${new Date().getFullYear()}. Be specific, reference actual wines and dining experiences by name. Keep responses concise but insightful. Format with line breaks.`
 
     const newHistory = [...history, { role: 'user', content: q }]
     setHistory(newHistory)
