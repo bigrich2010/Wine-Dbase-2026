@@ -1,8 +1,8 @@
 import { drinkingStatus, effectiveDrinkingWindow } from '../lib/helpers'
 
-export default function WineRow({ wine, bottles, onClick }) {
-  const inCellar = bottles.filter(b => b.status === 'In cellar').length
-  const pending = bottles.filter(b => b.status === 'Pending arrival').length
+export default function WineRow({ wine, bottles = [], onClick }) {
+  const inCellar = bottles.filter(b => b.status === 'In cellar').reduce((s,b) => s + (parseInt(b.quantity) || 1), 0)
+  const pending = bottles.filter(b => b.status === 'Pending arrival').reduce((s,b) => s + (parseInt(b.quantity) || 1), 0)
   const consumed = bottles.filter(b => ['Consumed', 'Enjoyed at restaurant'].includes(b.status)).length
 
   const ds = drinkingStatus(wine)
