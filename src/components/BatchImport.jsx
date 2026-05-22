@@ -43,7 +43,7 @@ Return ONLY a JSON array. No explanation, only JSON.`
           
           max_tokens: 3000,
           messages: [{ role: 'user', content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } },
+            { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64 } },
             { type: 'text', text: prompt }
           ]}]
         })
