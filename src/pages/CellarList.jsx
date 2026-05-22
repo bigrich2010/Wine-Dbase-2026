@@ -81,8 +81,8 @@ export default function CellarList() {
       readyNow: wines.filter(w => {
         const hasBottle = inCellar.some(b => b.wine_id === w.id)
         if (!hasBottle) return false
-        const from = w.drink_from, to = w.drink_to
-        return from && to && year >= from && year <= to
+        const win = effectiveDrinkingWindow(w)
+        return win && year >= win.from && year <= win.to
       }).length,
     }
   }, [wines, bottles])
@@ -149,6 +149,7 @@ export default function CellarList() {
 
   const applyScoreImport = async ({ toUpdate, toCreate }) => {
     setSaving(true)
+    try {
     for (const u of toUpdate) {
       const patch = {}
       if (u.extracted.score) patch.score_winefront = u.extracted.score
@@ -171,13 +172,19 @@ export default function CellarList() {
         drink_to: e.drink_to ? parseInt(e.drink_to) : null,
       }])
     }
-    setSaving(false)
     setModal(null)
     fetchAll()
+    } catch(e) {
+      console.error('applyScoreImport:', e)
+      alert('Score import failed. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const saveBatchImport = async (items) => {
     setSaving(true)
+    try {
     for (const item of items) {
       const e = item.extracted
       let wineId = item.match?.id
@@ -204,38 +211,48 @@ export default function CellarList() {
         }])
       }
     }
-    setSaving(false)
     setModal(null)
     fetchAll()
+    } catch(e) {
+      console.error('saveBatchImport:', e)
+      alert('Batch import failed. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const saveQuickCapture = async (form) => {
     setSaving(true)
-    const wineId = await getOrCreateWine({
-      producer: form.producer || 'Unknown',
-      wine_name: form.wine_name,
-      vintage: form.vintage,
-      type: form.type || 'Red',
-      region: form.region,
-    })
-
-    if (wineId) {
-      await supabase.from('bottles').insert([{
-        wine_id: wineId,
-        status: form.where_type === 'Restaurant' ? 'Enjoyed at restaurant' : 'Consumed',
-        consumed_date: form.date || new Date().toISOString().split('T')[0],
-        restaurant_name: form.restaurant_name || null,
-        shared_with: form.shared_with || null,
-        rating: form.rating || null,
-        tasting_note: form.note || null,
-        where_type: form.where_type || null,
-        reorder: form.reorder || false,
-        drunk_hero: true,
-      }])
+    try {
+      const wineId = await getOrCreateWine({
+        producer: form.producer || 'Unknown',
+        wine_name: form.wine_name,
+        vintage: form.vintage,
+        type: form.type || 'Red',
+        region: form.region,
+      })
+      if (wineId) {
+        await supabase.from('bottles').insert([{
+          wine_id: wineId,
+          status: form.where_type === 'Restaurant' ? 'Enjoyed at restaurant' : 'Consumed',
+          consumed_date: form.date || new Date().toISOString().split('T')[0],
+          restaurant_name: form.restaurant_name || null,
+          shared_with: form.shared_with || null,
+          rating: form.rating || null,
+          tasting_note: form.note || null,
+          where_type: form.where_type || null,
+          reorder: form.reorder || false,
+          drunk_hero: true,
+        }])
+      }
+      setModal(null)
+      fetchAll()
+    } catch(e) {
+      console.error('saveQuickCapture:', e)
+      alert('Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    setModal(null)
-    fetchAll()
   }
 
   if (selected) {
